@@ -14,7 +14,1268 @@ The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTI<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Prontuário Eletrônico Premium - SaaS-lite (SQLite WASM)</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <!-- FontAwesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <!-- Quill -->
+  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+  <!-- Simple styles -->
+  <style>
+    :root{
+      --bg:#f8f9fa; --fg:#212529; --card:#ffffff;
+    }
+    [data-theme="dark"]{
+      --bg:#0d1117; --fg:#c9d1d9; --card:#0b1220;
+    }
+    body{ background:var(--bg); color:var(--fg); }
+    .card{ background:var(--card); }
+    .sidebar { min-width:240px; max-width:320px; height:100vh; overflow:auto; position:fixed; }
+    .content { margin-left:320px; padding:20px; }
+    .small-muted { font-size:0.85rem; color: #6c757d; }
+    .file-preview { max-width:100%; height:auto; }
+    .drag-slot { min-height:60px; border:1px dashed rgba(0,0,0,0.1); padding:8px; margin-bottom:8px; border-radius:6px; background:rgba(255,255,255,0.02); }
+    .appointment { padding:6px; margin:4px 0; border-radius:6px; background:#e9ecef; cursor:grab; }
+    .appointment[data-status="miss"]{ background:#ffc9c9; }
+    .tooltip-inner { max-width:300px; text-align:left; }
+    .quill-editor { height:200px; }
+    .hidden { display:none!important; }
+    .glossary dt { font-weight:600; }
+    .help-badge { cursor:help; }
+    .seed-btn { margin-right:8px; }
+    .file-list img { max-width:120px; margin:6px; border-radius:6px; }
+    .AuditRow { font-family:monospace; font-size:0.9rem; }
+    .org-pill { cursor:pointer; }
+  </style>
+</head>
+<body data-theme="light">
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Prontuário Premium (WASM SQLite)</a>
+      <div class="d-flex align-items-center gap-2">
+        <div class="me-2">
+          <select id="orgSelect" class="form-select form-select-sm" title="Alternar organização"></select>
+        </div>
+        <button id="themeToggle" class="btn btn-outline-secondary btn-sm" title="Alternar tema"><i class="fa fa-moon"></i></button>
+        <div class="btn-group">
+          <button id="userBtn" class="btn btn-sm btn-outline-primary">Entrar</button>
+          <button id="importBtn" class="btn btn-sm btn-outline-secondary" title="Importar .sqlite"><i class="fa fa-file-import"></i></button>
+          <button id="exportBtn" class="btn btn-sm btn-outline-success" title="Exportar .sqlite"><i class="fa fa-file-export"></i></button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Sidebar -->
+  <div class="sidebar bg-light p-3 shadow-sm">
+    <div class="mb-3">
+      <strong>Menu</strong>
+    </div>
+    <ul class="nav nav-pills flex-column">
+      <li class="nav-item"><a class="nav-link active" href="#onboarding" data-target="onboarding">Onboarding</a></li>
+      <li class="nav-item"><a class="nav-link" href="#patients" data-target="patients">Pacientes</a></li>
+      <li class="nav-item"><a class="nav-link" href="#evolutions" data-target="evolutions">Evoluções / Atendimentos</a></li>
+      <li class="nav-item"><a class="nav-link" href="#agenda" data-target="agenda">Agenda</a></li>
+      <li class="nav-item"><a class="nav-link" href="#files" data-target="files">Arquivos</a></li>
+      <li class="nav-item"><a class="nav-link" href="#billing" data-target="billing">Billing (Mock)</a></li>
+      <li class="nav-item"><a class="nav-link" href="#dashboard" data-target="dashboard">Dashboard</a></li>
+      <li class="nav-item"><a class="nav-link" href="#audit" data-target="audit">Auditoria</a></li>
+      <li class="nav-item"><a class="nav-link" href="#glossary" data-target="glossary">Glossário</a></li>
+      <li class="nav-item"><a class="nav-link" href="#readme" data-target="readme">README</a></li>
+    </ul>
+
+    <hr/>
+    <div>
+      <button id="reloadSeedsBtn" class="btn btn-sm btn-outline-warning seed-btn">Recarregar Seeds</button>
+      <button id="resetBtn" class="btn btn-sm btn-outline-danger">Reset DB</button>
+    </div>
+    <hr/>
+    <div class="small-muted">
+      Aviso: o banco vive apenas na memória enquanto o navegador estiver aberto. Faça backup regular do arquivo .sqlite.
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="content">
+    <div id="flash" class="mb-3"></div>
+
+    <!-- ONBOARDING -->
+    <section id="onboardingSection" class="card mb-3 p-3">
+      <h4>Onboarding <span class="badge bg-info">Tour</span></h4>
+      <p class="small-muted">Bem-vindo! Este é um PEP (Prontuário Eletrônico Premium) rodando 100% no navegador usando SQLite via WASM. Você pode importar um .sqlite ou usar o banco seeded.</p>
+      <div class="d-flex gap-2">
+        <button id="startTourBtn" class="btn btn-primary btn-sm">Iniciar Tutorial</button>
+        <button id="trySeedBtn" class="btn btn-outline-primary btn-sm">Carregar Seeds</button>
+        <button id="tryImportBtn" class="btn btn-outline-secondary btn-sm">Importar .sqlite</button>
+      </div>
+      <hr/>
+      <div>
+        <h6>Limitações e mocks</h6>
+        <ul>
+          <li>Google Sign-in: mock — simula retorno e cria usuário local.</li>
+          <li>Emails: mock — mostra instrução de envio. Para produção: conectar backend.</li>
+          <li>Persistência: exporte .sqlite para salvar seu trabalho.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- LOGIN / USER PANEL -->
+    <section id="loginSection" class="card mb-3 p-3">
+      <h5>Login</h5>
+      <div id="authArea" class="row">
+        <div class="col-md-4">
+          <div class="mb-2"><input id="loginEmail" class="form-control form-control-sm" placeholder="Email"/></div>
+          <div class="mb-2"><input id="loginPassword" type="password" class="form-control form-control-sm" placeholder="Senha"/></div>
+          <div class="mb-2 d-flex gap-2">
+            <button id="loginLocalBtn" class="btn btn-sm btn-success">Entrar</button>
+            <button id="signupBtn" class="btn btn-sm btn-outline-primary">Criar conta</button>
+          </div>
+          <div class="mb-2">
+            <button id="googleMockBtn" class="btn btn-sm btn-danger"><i class="fa fa-google"></i> Entrar com Google (mock)</button>
+          </div>
+          <div class="small-muted">Precisa redefinir senha? <a href="#" id="resetPassLink">Clique aqui</a> (mock).</div>
+        </div>
+        <div class="col-md-8">
+          <div id="userInfo" class="hidden card p-2">
+            <div><strong id="userNameDisplay"></strong> <span class="small-muted" id="userRoleDisplay"></span></div>
+            <div class="small-muted"><span id="userEmailDisplay"></span></div>
+            <div class="mt-2">
+              <button id="logoutBtn" class="btn btn-sm btn-outline-danger">Sair</button>
+              <button id="manageRolesBtn" class="btn btn-sm btn-outline-secondary">Gerenciar Papéis</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PATIENTS -->
+    <section id="patientsSection" class="card mb-3 p-3 hidden">
+      <div class="d-flex justify-content-between">
+        <h5>Pacientes</h5>
+        <div>
+          <button id="importCsvBtn" class="btn btn-sm btn-outline-secondary">Import CSV</button>
+          <button id="exportCsvBtn" class="btn btn-sm btn-outline-success">Export CSV</button>
+          <button id="exportPatientsJsonBtn" class="btn btn-sm btn-outline-info">Export JSON</button>
+          <button id="newPatientBtn" class="btn btn-sm btn-primary">Novo Paciente</button>
+        </div>
+      </div>
+      <hr/>
+      <div class="row">
+        <div class="col-md-4">
+          <input id="patientSearch" class="form-control form-control-sm" placeholder="Pesquisar por nome, cpf, tag..." />
+          <div id="patientsList" class="mt-2"></div>
+        </div>
+        <div class="col-md-8">
+          <div id="patientFormArea" class="hidden card p-3">
+            <h6 id="patientFormTitle">Novo Paciente</h6>
+            <form id="patientForm">
+              <input type="hidden" id="patient_id" />
+              <div class="row">
+                <div class="col"><input id="p_nome" class="form-control form-control-sm" placeholder="Nome" required/></div>
+                <div class="col"><input id="p_cpf" class="form-control form-control-sm" placeholder="CPF"/></div>
+              </div>
+              <div class="row mt-2">
+                <div class="col"><input id="p_data_nasc" type="date" class="form-control form-control-sm"/></div>
+                <div class="col"><select id="p_sexo" class="form-select form-select-sm"><option></option><option value="M">M</option><option value="F">F</option></select></div>
+              </div>
+              <div class="row mt-2">
+                <div class="col"><input id="p_telefone" class="form-control form-control-sm" placeholder="Telefone"/></div>
+                <div class="col"><input id="p_email" type="email" class="form-control form-control-sm" placeholder="Email"/></div>
+              </div>
+              <div class="mt-2">
+                <textarea id="p_endereco" class="form-control form-control-sm" placeholder="Endereço"></textarea>
+              </div>
+              <div class="mt-2">
+                <textarea id="p_observacoes" class="form-control form-control-sm" placeholder="Observações privadas"></textarea>
+              </div>
+              <div class="mt-2 d-flex gap-2">
+                <button class="btn btn-sm btn-success" type="submit">Salvar</button>
+                <button id="patientCancelBtn" type="button" class="btn btn-sm btn-outline-secondary">Cancelar</button>
+                <button id="patientDeleteBtn" type="button" class="btn btn-sm btn-danger">Excluir</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EVOLUTIONS -->
+    <section id="evolutionsSection" class="card mb-3 p-3 hidden">
+      <div class="d-flex justify-content-between">
+        <h5>Evoluções / Atendimentos</h5>
+        <div>
+          <button id="newEvolutionBtn" class="btn btn-sm btn-primary">Nova Evolução</button>
+          <button id="exportEvolutionsPdfBtn" class="btn btn-sm btn-outline-success">Exportar PDF</button>
+        </div>
+      </div>
+      <hr/>
+      <div class="row">
+        <div class="col-md-4">
+          <select id="evoPatientFilter" class="form-select form-select-sm"><option value="">-- Filtrar por paciente --</option></select>
+          <div id="evolutionsList" class="mt-2"></div>
+        </div>
+        <div class="col-md-8">
+          <div id="evolutionEditorArea" class="hidden">
+            <h6 id="evolutionTitle">Nova Evolução</h6>
+            <div id="quillEditor" class="quill-editor"></div>
+            <div class="mt-2">
+              <input id="evoAttachInput" type="file" class="form-control form-control-sm" />
+              <button id="saveEvolutionBtn" class="btn btn-sm btn-success mt-2">Salvar</button>
+              <button id="cancelEvolutionBtn" class="btn btn-sm btn-outline-secondary mt-2">Cancelar</button>
+            </div>
+            <div class="mt-3">
+              <h6>Versões</h6>
+              <div id="evoVersions"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AGENDA -->
+    <section id="agendaSection" class="card mb-3 p-3 hidden">
+      <div class="d-flex justify-content-between">
+        <h5>Agenda</h5>
+        <div>
+          <button id="viewDayBtn" class="btn btn-sm btn-outline-secondary">Dia</button>
+          <button id="viewWeekBtn" class="btn btn-sm btn-outline-secondary">Semana</button>
+          <button id="viewMonthBtn" class="btn btn-sm btn-outline-secondary">Mês</button>
+          <button id="newApptBtn" class="btn btn-sm btn-primary">Novo</button>
+        </div>
+      </div>
+      <hr/>
+      <div id="agendaView" class="row">
+        <div class="col-md-3">
+          <div class="card p-2">
+            <h6>Horários</h6>
+            <div id="timeSlots"></div>
+          </div>
+        </div>
+        <div class="col-md-9">
+          <div id="appointmentsArea"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FILES -->
+    <section id="filesSection" class="card mb-3 p-3 hidden">
+      <h5>Arquivos</h5>
+      <div class="row">
+        <div class="col-md-4">
+          <select id="filesPatientFilter" class="form-select form-select-sm"><option value="">-- Selecionar paciente --</option></select>
+          <input id="fileUploadInput" type="file" class="form-control form-control-sm mt-2" />
+          <button id="uploadFileBtn" class="btn btn-sm btn-primary mt-2">Enviar e salvar no DB</button>
+        </div>
+        <div class="col-md-8">
+          <div id="filesList" class="file-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BILLING -->
+    <section id="billingSection" class="card mb-3 p-3 hidden">
+      <h5>Billing (Mock)</h5>
+      <div class="row">
+        <div class="col-md-6">
+          <div id="billingInfo"></div>
+        </div>
+        <div class="col-md-6">
+          <div>
+            <button id="subscribeStarter" class="btn btn-sm btn-outline-primary">Assinar Starter</button>
+            <button id="subscribePro" class="btn btn-sm btn-outline-primary">Assinar Pro</button>
+            <button id="subscribeClinic" class="btn btn-sm btn-outline-primary">Assinar Clinic</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="dashboardSection" class="card mb-3 p-3 hidden">
+      <h5>Dashboard</h5>
+      <div class="row">
+        <div class="col-md-6">
+          <canvas id="chartAppointments"></canvas>
+        </div>
+        <div class="col-md-6">
+          <canvas id="chartPatients"></canvas>
+        </div>
+      </div>
+      <hr/>
+      <div id="dashboardStats" class="row"></div>
+    </section>
+
+    <!-- AUDIT -->
+    <section id="auditSection" class="card mb-3 p-3 hidden">
+      <h5>Auditoria</h5>
+      <div id="auditList"></div>
+      <div class="mt-2">
+        <button id="exportAuditBtn" class="btn btn-sm btn-outline-secondary">Exportar / Anonimizar (mock)</button>
+      </div>
+    </section>
+
+    <!-- GLOSSARY -->
+    <section id="glossarySection" class="card mb-3 p-3 hidden">
+      <h5>Glossário</h5>
+      <dl class="glossary">
+        <dt>CMV</dt><dd>Custo Médio de Venda. No contexto aqui é apenas um exemplo.</dd>
+        <dt>Ticket Médio</dt><dd>Receita média por atendimento.</dd>
+        <dt>LGPD</dt><dd>Lei Geral de Proteção de Dados — respeite a privacidade dos pacientes.</dd>
+      </dl>
+    </section>
+
+    <!-- README -->
+    <section id="readmeSection" class="card mb-3 p-3 hidden">
+      <h5>README (interno)</h5>
+      <p>Deploy no GitHub Pages:</p>
+      <ol>
+        <li>Crie repositório.</li>
+        <li>Enviar apenas index.html para a branch main.</li>
+        <li>Ativar GitHub Pages → branch main → / (root).</li>
+      </ol>
+      <h6>Como transformar em SaaS real</h6>
+      <ul>
+        <li>Implementar backend (Node/Python/Go) com autenticação e armazenamento central.</li>
+        <li>Upload automático do SQLite ou migrar para RDBMS/Cloud DB.</li>
+        <li>Servir arquivos por CDN e controlar RBAC no backend.</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- Hidden file input for sqlite import fallback -->
+  <input id="sqliteFileInput" type="file" accept=".sqlite,.db" class="hidden" />
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/interactjs@1.11.0/dist/interact.min.js"></script>
+
+  <!-- sql.js (WASM) -->
+  <script src="https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.js"></script>
+
+  <script>
+    // Globals
+    let SQL = null;
+    let db = null;
+    let currentUser = null;
+    let currentOrgId = null;
+    let quill = null;
+    let charts = {};
+    const simulatedIP = () => '192.0.2.' + Math.floor(Math.random()*255);
+    const nowISO = () => new Date().toISOString();
+
+    // Initialize sql.js
+    async function initEngine() {
+      try {
+        SQL = await initSqlJs({ locateFile: file => 'https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.wasm' });
+        // Try to prompt for file (File System Access API) cautiously
+        try {
+          if ('showOpenFilePicker' in window) {
+            // We don't auto-open picker to avoid blocking; show a non-blocking prompt in UI instead.
+            console.log('File System Access API available.');
+          }
+        } catch(e){console.warn(e);}
+        await initDB(); // create in-memory DB with seeds if needed
+        uiInit();
+        flash('Banco inicializado (em memória). Faça export .sqlite para salvar.', 'info');
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao carregar SQLite WASM: ' + err.message);
+      }
+    }
+
+    // Create schema + seeds
+    async function initDB({seed=true} = {}) {
+      if(!SQL) return;
+      db = new SQL.Database();
+      // Schema
+      const schema = `
+      PRAGMA foreign_keys = ON;
+      CREATE TABLE organizations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, created_at TEXT);
+      CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER, name TEXT, email TEXT UNIQUE, password TEXT, role TEXT, created_at TEXT, FOREIGN KEY(organization_id) REFERENCES organizations(id));
+      CREATE TABLE patients (id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER, nome TEXT, cpf TEXT, data_nasc TEXT, sexo TEXT, telefone TEXT, email TEXT, endereco TEXT, emergencia TEXT, alergias TEXT, historico TEXT, tags TEXT, observacoes TEXT, status TEXT, consentimento INTEGER, created_at TEXT, updated_at TEXT, ip TEXT, FOREIGN KEY(organization_id) REFERENCES organizations(id));
+      CREATE TABLE evolutions (id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER, patient_id INTEGER, professional_id INTEGER, content TEXT, created_at TEXT, FOREIGN KEY(organization_id) REFERENCES organizations(id), FOREIGN KEY(patient_id) REFERENCES patients(id));
+      CREATE TABLE evolution_versions (id INTEGER PRIMARY KEY AUTOINCREMENT, evolution_id INTEGER, content TEXT, created_at TEXT);
+      CREATE TABLE files (id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER, patient_id INTEGER, filename TEXT, mime TEXT, data_base64 TEXT, created_at TEXT);
+      CREATE TABLE appointments (id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER, patient_id INTEGER, professional_id INTEGER, data_hora TEXT, duracao INTEGER, sala TEXT, status TEXT, notas TEXT);
+      CREATE TABLE billing_subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER, user_id INTEGER, plan TEXT, started_at TEXT, trial_until TEXT, status TEXT);
+      CREATE TABLE audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action TEXT, table_name TEXT, row_id TEXT, timestamp TEXT, ip TEXT, userAgent TEXT);
+      `;
+      db.exec(schema);
+
+      if (seed) {
+        // Seeds
+        db.run("INSERT INTO organizations (name, created_at) VALUES (?,?)", ['Clinica Demo', nowISO()]);
+        const orgId = db.exec("SELECT id FROM organizations")[0].values[0][0];
+        db.run("INSERT INTO users (organization_id,name,email,password,role,created_at) VALUES (?,?,?,?,?,?)", [orgId, 'Owner Demo','owner@demo.local','ownerpass','owner', nowISO()]);
+        db.run("INSERT INTO users (organization_id,name,email,password,role,created_at) VALUES (?,?,?,?,?,?)", [orgId, 'Dr. Profissional','pro@demo.local','propass','professional', nowISO()]);
+        // 5 patients
+        const patients = [
+          ['João Silva','12345678901','1980-05-10','M','(11)99999-0001','joao@demo.local','Rua A, 1','Contato: Maria','Nenhuma','Histórico A','tag1,tag2','Obs privada','active',1],
+          ['Maria Oliveira','98765432100','1992-08-21','F','(11)99999-0002','maria@demo.local','Rua B, 2','Contato: José','Penicilina','Histórico B','tag3','Obs','active',1],
+          ['Carlos Pereira','11122233344','1975-02-15','M','(11)99999-0003','carlos@demo.local','Av C, 10','Contato: Ana','Nenhuma','Histórico C','tag2','Obs','active',1],
+          ['Ana Souza','22233344455','2000-11-11','F','(11)99999-0004','ana@demo.local','R. D, 5','Contato: Paulo','Alergia X','Histórico D','tag4','Obs','active',1],
+          ['Paulo Lima','33344455566','1985-03-03','M','(11)99999-0005','paulo@demo.local','Travessa E, 7','Contato: Rita','Nenhuma','Histórico E','tag5','Obs','active',1]
+        ];
+        let stmt = db.prepare("INSERT INTO patients (organization_id,nome,cpf,data_nasc,sexo,telefone,email,endereco,emergencia,alergias,historico,tags,observacoes,status,consentimento,created_at,updated_at,ip) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        for(let p of patients){
+          stmt.run([orgId, ...p, nowISO(), nowISO(), simulatedIP()]);
+        }
+        stmt.free();
+        // 6 evolutions
+        const pats = db.exec("SELECT id FROM patients")[0].values.map(r=>r[0]);
+        for(let i=0;i<6;i++){
+          const pid = pats[i%pats.length];
+          db.run("INSERT INTO evolutions (organization_id,patient_id,professional_id,content,created_at) VALUES (?,?,?,?,?)", [orgId, pid, 2, `Evolução inicial ${i+1} para paciente ${pid}`, nowISO()]);
+        }
+        // versions
+        const evos = db.exec("SELECT id, content FROM evolutions").length ? db.exec("SELECT id, content FROM evolutions")[0].values : [];
+        for(let e of evos){
+          db.run("INSERT INTO evolution_versions (evolution_id, content, created_at) VALUES (?,?,?)", [e[0], e[1], nowISO()]);
+        }
+        // 5 appointments
+        for(let i=0;i<5;i++){
+          const pid = pats[i%pats.length];
+          db.run("INSERT INTO appointments (organization_id,patient_id,professional_id,data_hora,duracao,sala,status,notas) VALUES (?,?,?,?,?,?,?,?)",
+            [orgId, pid, 2, new Date(Date.now() + i*3600*1000).toISOString(), 30, 'Sala A', i%4===0?'miss':'confirmed', 'Agendamento seed']);
+        }
+        // billing mock
+        db.run("INSERT INTO billing_subscriptions (organization_id,user_id,plan,started_at,trial_until,status) VALUES (?,?,?,?,?,?)", [orgId,1,'Starter', nowISO(), new Date(Date.now()+30*24*3600*1000).toISOString(), 'trial']);
+      }
+      // default currentOrg
+      const orgs = db.exec("SELECT id,name FROM organizations");
+      if (orgs && orgs[0] && orgs[0].values.length) {
+        currentOrgId = orgs[0].values[0][0];
+      }
+      auditLog(null, 'init_db', 'database', null);
+    }
+
+    // Load DB from .sqlite file (File or ArrayBuffer)
+    async function loadDBFromFile(file) {
+      try {
+        const ab = await file.arrayBuffer();
+        db = new SQL.Database(new Uint8Array(ab));
+        // pick first organization if exists
+        const orgs = db.exec("SELECT id FROM organizations");
+        if (orgs && orgs[0] && orgs[0].values.length) currentOrgId = orgs[0].values[0][0];
+        uiInit();
+        flash('Banco .sqlite carregado com sucesso.', 'success');
+        auditLog(currentUser?.id || null, 'load_db', 'database', null);
+      } catch (e) {
+        console.error(e); flash('Erro ao carregar .sqlite: ' + e.message, 'danger');
+      }
+    }
+
+    // Export DB to .sqlite (download)
+    function exportDB() {
+      if(!db){ flash('Nenhum banco carregado', 'warning'); return; }
+      const binary = db.export();
+      const blob = new Blob([binary], {type: 'application/x-sqlite3'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'prontuario.sqlite';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      auditLog(currentUser?.id || null, 'export_db', 'database', null);
+      flash('Arquivo .sqlite exportado. Faça backup!', 'success');
+    }
+
+    // Backup to JSON
+    function backupToJSON() {
+      if(!db){ flash('Nenhum banco', 'warning'); return; }
+      const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")[0].values.map(r=>r[0]);
+      const out = {};
+      for(const t of tables){
+        try{
+          const res = db.exec(`SELECT * FROM ${t}`);
+          if(res && res[0]){
+            const cols = res[0].columns;
+            out[t] = res[0].values.map(row=>{
+              const o = {};
+              for(let i=0;i<cols.length;i++) o[cols[i]] = row[i];
+              return o;
+            });
+          } else out[t] = [];
+        } catch(e){ out[t] = []; }
+      }
+      const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='backup.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      auditLog(currentUser?.id || null, 'backup_json', 'database', null);
+      flash('Backup JSON baixado.', 'success');
+    }
+
+    // Restore from JSON (structure must match)
+    function restoreFromJSONFile(file) {
+      file.text().then(txt=>{
+        try{
+          const obj = JSON.parse(txt);
+          // naive restore: drop all, recreate via schema (assumes same schema)
+          initDB({seed:false}); // resets schema in memory
+          // insert tables
+          for(const t of Object.keys(obj)){
+            if(!Array.isArray(obj[t])) continue;
+            const rows = obj[t];
+            if(rows.length===0) continue;
+            const cols = Object.keys(rows[0]);
+            const placeholders = cols.map(()=>'?').join(',');
+            const stmt = db.prepare(`INSERT INTO ${t} (${cols.join(',')}) VALUES (${placeholders})`);
+            db.run("BEGIN");
+            for(const r of rows){ stmt.run(cols.map(c=>r[c])); }
+            db.run("COMMIT");
+            stmt.free();
+          }
+          flash('Restaurado JSON no DB em memória.', 'success');
+          auditLog(currentUser?.id || null, 'restore_json', 'database', null);
+          uiInit();
+        } catch(e){
+          flash('Erro ao restaurar JSON: ' + e.message, 'danger');
+        }
+      });
+    }
+
+    // Reset DB with confirmation
+    async function resetDB() {
+      if(!confirm('Confirmar reset do banco para estado limpo com seeds? Isso perderá o banco atual em memória.')) return;
+      await initDB({seed:true});
+      uiInit();
+      flash('DB reiniciado com seeds.', 'success');
+      auditLog(currentUser?.id || null, 'reset_db', 'database', null);
+    }
+
+    // UI and interactions
+    function uiInit(){
+      // Populate org select
+      const orgs = db.exec("SELECT id,name FROM organizations");
+      const sel = document.getElementById('orgSelect');
+      sel.innerHTML = '';
+      if(orgs && orgs[0]){
+        for(const row of orgs[0].values){
+          const opt = document.createElement('option');
+          opt.value = row[0]; opt.textContent = row[1];
+          sel.appendChild(opt);
+        }
+        if(!currentOrgId) currentOrgId = orgs[0].values[0][0];
+        sel.value = currentOrgId;
+      } else {
+        const opt = document.createElement('option'); opt.textContent='-- Sem organização --'; sel.appendChild(opt);
+      }
+      sel.onchange = (e)=>{ currentOrgId = Number(e.target.value); refreshAll(); }
+      // Setup user area
+      refreshUsersList();
+      // init sections
+      initPatientsUI();
+      initEvolutionsUI();
+      initAgendaUI();
+      initFilesUI();
+      initBillingUI();
+      initDashboard();
+      initAuditUI();
+      bindNavLinks();
+    }
+
+    // Flash messages
+    function flash(msg, type='info', timeout=4000){
+      const div = document.getElementById('flash');
+      div.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+      if(timeout) setTimeout(()=>{ if(div) div.innerHTML=''; }, timeout);
+    }
+
+    // AUDIT
+    function auditLog(userId, action, table, rowId){
+      try{
+        db.run("INSERT INTO audit_logs (user_id,action,table_name,row_id,timestamp,ip,userAgent) VALUES (?,?,?,?,?,?,?)",
+          [userId, action, table, rowId, nowISO(), simulatedIP(), navigator.userAgent.slice(0,120)]);
+      } catch(e){ console.warn('auditLog failed', e); }
+    }
+
+    // USERS / Auth (local + mock Google)
+    function refreshUsersList(){
+      // If there's a logged in user, show info
+      const ui = document.getElementById('userInfo');
+      const userBtn = document.getElementById('userBtn');
+      if(currentUser){
+        ui.classList.remove('hidden');
+        document.getElementById('userNameDisplay').textContent = currentUser.name;
+        document.getElementById('userEmailDisplay').textContent = currentUser.email;
+        document.getElementById('userRoleDisplay').textContent = '(' + currentUser.role + ')';
+        userBtn.textContent = currentUser.name;
+      } else {
+        ui.classList.add('hidden');
+        userBtn.textContent = 'Entrar';
+      }
+    }
+
+    function loginLocal(email, password){
+      try{
+        const res = db.exec("SELECT id, organization_id,name,email,role FROM users WHERE email = ? AND password = ?", [email, password]);
+        if(res && res[0] && res[0].values.length){
+          const r = res[0].values[0];
+          currentUser = { id:r[0], organization_id:r[1], name:r[2], email:r[3], role:r[4] };
+          currentOrgId = currentUser.organization_id;
+          auditLog(currentUser.id, 'login_local', 'users', currentUser.id);
+          uiInit(); refreshAll();
+          flash('Login efetuado: ' + currentUser.name, 'success');
+        } else {
+          flash('Credenciais inválidas', 'danger');
+        }
+      } catch(e){ flash('Erro login: '+e.message,'danger'); }
+    }
+    function signupLocal(name,email,password){
+      try{
+        db.run("INSERT INTO users (organization_id,name,email,password,role,created_at) VALUES (?,?,?,?,?,?)", [currentOrgId, name, email, password, 'viewer', nowISO()]);
+        flash('Conta criada. Faça login.', 'success');
+        auditLog(null, 'signup', 'users', null);
+      } catch(e){ flash('Erro criar usuário: ' + e.message, 'danger'); }
+    }
+    function googleMockSignIn(){
+      // Simulate OAuth response
+      const mocked = { name: 'Google User', email: 'google.user@mock.local' };
+      // create user if not exists
+      try{
+        const res = db.exec("SELECT id,name,role FROM users WHERE email = ?", [mocked.email]);
+        if(res && res[0] && res[0].values.length){
+          const r = res[0].values[0];
+          currentUser = { id:r[0], name:r[1], email:mocked.email, role:r[2] };
+        } else {
+          db.run("INSERT INTO users (organization_id,name,email,password,role,created_at) VALUES (?,?,?,?,?,?)", [currentOrgId, mocked.name, mocked.email, 'oauth-mock', 'viewer', nowISO()]);
+          const id = db.exec("SELECT id FROM users WHERE email = ?", [mocked.email])[0].values[0][0];
+          currentUser = { id, name:mocked.name, email:mocked.email, role:'viewer' };
+        }
+        auditLog(currentUser.id, 'google_mock_signin', 'users', currentUser.id);
+        uiInit(); refreshAll();
+        flash('Login Google (mock) efetuado. Instruções para integrar: veja README.', 'info');
+      } catch(e){ flash('Erro Google mock: '+e.message,'danger'); }
+    }
+
+    function logout(){
+      auditLog(currentUser?.id || null, 'logout', 'users', currentUser?.id || null);
+      currentUser = null; refreshUsersList(); flash('Logout efetuado','info'); refreshAll();
+    }
+
+    // RBAC check
+    function requiresRole(roles){
+      const allowed = Array.isArray(roles) ? roles : [roles];
+      return currentUser && allowed.includes(currentUser.role);
+    }
+
+    // PATIENTS UI
+    function initPatientsUI(){
+      document.getElementById('patientsSection').classList.remove('hidden');
+      document.getElementById('newPatientBtn').onclick = ()=>{ showPatientForm(); };
+      document.getElementById('patientCancelBtn').onclick = ()=>{ hidePatientForm(); };
+      document.getElementById('patientForm').onsubmit = savePatient;
+      document.getElementById('patientDeleteBtn').onclick = deletePatient;
+      document.getElementById('patientSearch').oninput = refreshPatientsList;
+      document.getElementById('importCsvBtn').onclick = importPatientsCSV;
+      document.getElementById('exportCsvBtn').onclick = exportPatientsCSV;
+      document.getElementById('exportPatientsJsonBtn').onclick = exportPatientsJSON;
+      refreshPatientsList();
+    }
+
+    function refreshPatientsList(){
+      const q = document.getElementById('patientSearch').value.toLowerCase();
+      const res = db.exec("SELECT id,nome,cpf,telefone,email,created_at FROM patients WHERE organization_id = ? ORDER BY nome", [currentOrgId]);
+      const list = document.getElementById('patientsList'); list.innerHTML='';
+      if(res && res[0]){
+        for(const r of res[0].values){
+          const id=r[0], nome=r[1], cpf=r[2];
+          if(q && !(nome.toLowerCase().includes(q) || (cpf||'').includes(q))) continue;
+          const el = document.createElement('div'); el.className='card p-2 mb-1';
+          el.innerHTML = `<div class="d-flex justify-content-between"><div><strong>${nome}</strong><div class="small-muted">${cpf}</div></div><div><button class="btn btn-sm btn-outline-primary" data-id="${id}">Abrir</button></div></div>`;
+          el.querySelector('button').onclick = ()=>{ loadPatient(id); };
+          list.appendChild(el);
+        }
+      }
+    }
+
+    function showPatientForm(data){
+      document.getElementById('patientFormArea').classList.remove('hidden');
+      document.getElementById('patientFormTitle').textContent = data ? 'Editar Paciente' : 'Novo Paciente';
+      if(data){
+        document.getElementById('patient_id').value = data.id;
+        document.getElementById('p_nome').value = data.nome;
+        document.getElementById('p_cpf').value = data.cpf;
+        document.getElementById('p_data_nasc').value = data.data_nasc || '';
+        document.getElementById('p_sexo').value = data.sexo || '';
+        document.getElementById('p_telefone').value = data.telefone || '';
+        document.getElementById('p_email').value = data.email || '';
+        document.getElementById('p_endereco').value = data.endereco || '';
+        document.getElementById('p_observacoes').value = data.observacoes || '';
+      } else {
+        document.getElementById('patientForm').reset();
+        document.getElementById('patient_id').value = '';
+      }
+    }
+    function hidePatientForm(){
+      document.getElementById('patientFormArea').classList.add('hidden');
+    }
+    function loadPatient(id){
+      const res = db.exec("SELECT * FROM patients WHERE id = ?", [id]);
+      if(res && res[0] && res[0].values.length){
+        const cols = res[0].columns;
+        const vals = res[0].values[0];
+        const obj = {}; for(let i=0;i<cols.length;i++) obj[cols[i]] = vals[i];
+        showPatientForm(obj);
+        // also switch to evolutions filter
+        document.querySelector('a[data-target="evolutions"]').click();
+        document.getElementById('evoPatientFilter').value = id;
+        refreshEvolutionsList();
+      }
+    }
+    function savePatient(e){
+      e.preventDefault();
+      const id = document.getElementById('patient_id').value;
+      const payload = {
+        nome:document.getElementById('p_nome').value,
+        cpf:document.getElementById('p_cpf').value,
+        data_nasc:document.getElementById('p_data_nasc').value,
+        sexo:document.getElementById('p_sexo').value,
+        telefone:document.getElementById('p_telefone').value,
+        email:document.getElementById('p_email').value,
+        endereco:document.getElementById('p_endereco').value,
+        observacoes:document.getElementById('p_observacoes').value,
+      };
+      try{
+        if(id){
+          const stmt = db.prepare("UPDATE patients SET nome=?,cpf=?,data_nasc=?,sexo=?,telefone=?,email=?,endereco=?,observacoes=?,updated_at=?,ip=? WHERE id = ?");
+          stmt.run([payload.nome,payload.cpf,payload.data_nasc,payload.sexo,payload.telefone,payload.email,payload.endereco,payload.observacoes, nowISO(), simulatedIP(), id]);
+          stmt.free();
+          auditLog(currentUser?.id || null, 'update_patient', 'patients', id);
+          flash('Paciente atualizado','success');
+        } else {
+          const stmt = db.prepare("INSERT INTO patients (organization_id,nome,cpf,data_nasc,sexo,telefone,email,endereco,observacoes,status,consentimento,created_at,updated_at,ip) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+          stmt.run([currentOrgId, payload.nome,payload.cpf,payload.data_nasc,payload.sexo,payload.telefone,payload.email,payload.endereco,payload.observacoes,'active',1,nowISO(),nowISO(),simulatedIP()]);
+          stmt.free();
+          auditLog(currentUser?.id || null, 'create_patient', 'patients', null);
+          flash('Paciente criado','success');
+        }
+        hidePatientForm(); refreshPatientsList(); refreshEvolutionsList(); refreshFilesList(); refreshDashboard();
+      } catch(e){ flash('Erro salvar paciente: '+e.message,'danger'); }
+    }
+    function deletePatient(){
+      const id = document.getElementById('patient_id').value;
+      if(!id) return;
+      if(!confirm('Excluir paciente ID ' + id + '?')) return;
+      try{
+        db.run("DELETE FROM patients WHERE id = ?", [id]);
+        auditLog(currentUser?.id || null, 'delete_patient', 'patients', id);
+        flash('Paciente excluído','success');
+        hidePatientForm(); refreshPatientsList(); refreshEvolutionsList(); refreshFilesList(); refreshDashboard();
+      } catch(e){ flash('Erro excluir: '+e.message,'danger'); }
+    }
+
+    function importPatientsCSV(){
+      const input = document.createElement('input'); input.type='file'; input.accept='.csv';
+      input.onchange = ()=> {
+        const f = input.files[0];
+        f.text().then(txt=>{
+          const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(l=>l);
+          if(lines.length<1) return;
+          const headers = lines[0].split(',');
+          db.run("BEGIN");
+          const insert = db.prepare("INSERT INTO patients (organization_id,nome,cpf,created_at,updated_at,ip) VALUES (?,?,?,?,?,?)");
+          for(let i=1;i<lines.length;i++){
+            const vals = lines[i].split(',');
+            const nome = vals[0]||('Paciente '+i);
+            const cpf = vals[1]||'';
+            insert.run([currentOrgId,nome,cpf, nowISO(), nowISO(), simulatedIP()]);
+          }
+          db.run("COMMIT");
+          insert.free();
+          flash('CSV importado','success'); refreshPatientsList();
+          auditLog(currentUser?.id || null, 'import_csv', 'patients', null);
+        });
+      };
+      input.click();
+    }
+
+    function exportPatientsCSV(){
+      const res = db.exec("SELECT nome,cpf,data_nasc,telefone,email FROM patients WHERE organization_id = ?", [currentOrgId]);
+      const rows = [ ['nome','cpf','data_nasc','telefone','email'] ];
+      if(res && res[0]){
+        for(const r of res[0].values) rows.push(r);
+      }
+      const csv = rows.map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='patients.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      auditLog(currentUser?.id || null, 'export_csv', 'patients', null);
+      flash('CSV preparado para download','success');
+    }
+
+    function exportPatientsJSON(){
+      const res = db.exec("SELECT * FROM patients WHERE organization_id = ?", [currentOrgId]);
+      const out = [];
+      if(res && res[0]) {
+        const cols = res[0].columns;
+        for(const r of res[0].values){
+          const obj = {};
+          for(let i=0;i<cols.length;i++) obj[cols[i]] = r[i];
+          out.push(obj);
+        }
+      }
+      const blob = new Blob([JSON.stringify(out,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='patients.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      auditLog(currentUser?.id || null, 'export_json', 'patients', null);
+      flash('JSON de pacientes gerado','success');
+    }
+
+    // EVOLUTIONS UI
+    function initEvolutionsUI(){
+      document.getElementById('evolutionsSection').classList.remove('hidden');
+      quill = new Quill('#quillEditor', { theme: 'snow' });
+      document.getElementById('newEvolutionBtn').onclick = ()=>{ showEvolutionEditor(); };
+      document.getElementById('saveEvolutionBtn').onclick = saveEvolution;
+      document.getElementById('cancelEvolutionBtn').onclick = ()=>{ hideEvolutionEditor(); };
+      document.getElementById('evoPatientFilter').onchange = refreshEvolutionsList;
+      document.getElementById('evoAttachInput').onchange = (e)=>{ /* handled in save */ };
+      document.getElementById('exportEvolutionsPdfBtn').onclick = exportEvolutionsPDF;
+      refreshEvolutionsList();
+    }
+
+    function refreshEvolutionsList(){
+      const pid = document.getElementById('evoPatientFilter').value;
+      const stmt = pid ? db.exec("SELECT id,patient_id,content,created_at FROM evolutions WHERE organization_id = ? AND patient_id = ? ORDER BY created_at DESC", [currentOrgId, pid]) : db.exec("SELECT id,patient_id,content,created_at FROM evolutions WHERE organization_id = ? ORDER BY created_at DESC", [currentOrgId]);
+      const list = document.getElementById('evolutionsList'); list.innerHTML='';
+      if(stmt && stmt[0]){
+        for(const r of stmt[0].values){
+          const id=r[0], patient_id=r[1], content=(r[2]||'').slice(0,120);
+          const el = document.createElement('div'); el.className='card p-2 mb-1';
+          el.innerHTML = `<div class="d-flex justify-content-between"><div><strong>Paciente #${patient_id}</strong><div class="small-muted">${content}</div></div><div><button class="btn btn-sm btn-outline-primary" data-id="${id}">Abrir</button></div></div>`;
+          el.querySelector('button').onclick = ()=>{ openEvolution(id); };
+          list.appendChild(el);
+        }
+      }
+      // fill patient filter
+      const pf = document.getElementById('evoPatientFilter'); pf.innerHTML = '<option value="">-- Filtrar por paciente --</option>';
+      const pats = db.exec("SELECT id,nome FROM patients WHERE organization_id = ?", [currentOrgId]);
+      if(pats && pats[0]) for(const r of pats[0].values){ const o=document.createElement('option'); o.value=r[0]; o.textContent=`${r[1]} (#${r[0]})`; pf.appendChild(o); }
+    }
+
+    function showEvolutionEditor(evo){
+      document.getElementById('evolutionEditorArea').classList.remove('hidden');
+      document.getElementById('evolutionTitle').textContent = evo ? 'Editar Evolução' : 'Nova Evolução';
+      if(evo){
+        quill.root.innerHTML = evo.content;
+        document.getElementById('saveEvolutionBtn').dataset.evoId = evo.id;
+        loadEvolutionVersions(evo.id);
+      } else { quill.root.innerHTML = ''; document.getElementById('saveEvolutionBtn').dataset.evoId=''; document.getElementById('evoVersions').innerHTML=''; }
+    }
+    function hideEvolutionEditor(){ document.getElementById('evolutionEditorArea').classList.add('hidden'); }
+    function openEvolution(id){
+      const res = db.exec("SELECT id,patient_id,content FROM evolutions WHERE id = ?", [id]);
+      if(res && res[0] && res[0].values.length){
+        const r = res[0].values[0];
+        document.getElementById('evoPatientFilter').value = r[1];
+        showEvolutionEditor({id:r[0],patient_id:r[1],content:r[2]});
+        loadEvolutionVersions(r[0]);
+      }
+    }
+    function saveEvolution(){
+      const evoId = this.dataset.evoId;
+      const content = quill.root.innerHTML;
+      const patientId = document.getElementById('evoPatientFilter').value;
+      if(!patientId){ flash('Selecione um paciente para vincular a evolução.','warning'); return; }
+      if(evoId){
+        db.run("UPDATE evolutions SET content=?, updated_at=? WHERE id = ?", [content, nowISO(), evoId]);
+        db.run("INSERT INTO evolution_versions (evolution_id,content,created_at) VALUES (?,?,?)", [evoId, content, nowISO()]);
+        auditLog(currentUser?.id || null, 'update_evolution', 'evolutions', evoId);
+        flash('Evolução atualizada e versão salva.','success');
+      } else {
+        db.run("INSERT INTO evolutions (organization_id,patient_id,professional_id,content,created_at) VALUES (?,?,?,?,?)", [currentOrgId, patientId, currentUser?.id || null, content, nowISO()]);
+        const newId = db.exec("SELECT last_insert_rowid()")[0].values[0][0];
+        db.run("INSERT INTO evolution_versions (evolution_id,content,created_at) VALUES (?,?,?)", [newId, content, nowISO()]);
+        auditLog(currentUser?.id || null, 'create_evolution', 'evolutions', newId);
+        flash('Evolução criada','success');
+      }
+      hideEvolutionEditor(); refreshEvolutionsList(); refreshDashboard();
+    }
+
+    function loadEvolutionVersions(evolutionId){
+      const res = db.exec("SELECT id,content,created_at FROM evolution_versions WHERE evolution_id = ? ORDER BY created_at DESC", [evolutionId]);
+      const area = document.getElementById('evoVersions'); area.innerHTML='';
+      if(res && res[0]){
+        for(const r of res[0].values){
+          const id=r[0], content=r[1], created=r[2];
+          const div = document.createElement('div'); div.className='card p-2 mb-1';
+          div.innerHTML = `<div class="d-flex justify-content-between"><div class="small-muted">${created}</div><div><button class="btn btn-sm btn-outline-secondary">Ver diffs</button></div></div><div class="mt-2">${content}</div>`;
+          div.querySelector('button').onclick = ()=>{ showDiff(evolutionId, id); };
+          area.appendChild(div);
+        }
+      }
+    }
+
+    function showDiff(evolutionId, versionId){
+      // simple textual diff: compare with previous version
+      const curr = db.exec("SELECT content FROM evolution_versions WHERE id = ?", [versionId])[0].values[0][0];
+      const prevRes = db.exec("SELECT content FROM evolution_versions WHERE evolution_id = ? AND id < ? ORDER BY id DESC LIMIT 1", [evolutionId, versionId]);
+      const prev = prevRes && prevRes[0] && prevRes[0].values.length ? prevRes[0].values[0][0] : '';
+      // simple diff: show lines present in curr not in prev and vice versa
+      const a = prev.split(/[\r\n]+/);
+      const b = curr.split(/[\r\n]+/);
+      const added = b.filter(x=>!a.includes(x)).map(l=>`+ ${escapeHtml(l)}`).join('<br>');
+      const removed = a.filter(x=>!b.includes(x)).map(l=>`- ${escapeHtml(l)}`).join('<br>');
+      const modal = createModal('Diff versão', `<div><h6>Adicionado</h6><div style="color:green">${added||'<em>nenhum</em>'}</div><h6>Removido</h6><div style="color:red">${removed||'<em>nenhum</em>'}</div></div>`);
+      modal.show();
+    }
+
+    function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+    // FILES UI
+    function initFilesUI(){
+      document.getElementById('filesSection').classList.remove('hidden');
+      document.getElementById('uploadFileBtn').onclick = uploadFileToDB;
+      refreshFilesList();
+    }
+
+    function uploadFileToDB(){
+      const input = document.getElementById('fileUploadInput');
+      const file = input.files[0];
+      const patientId = document.getElementById('filesPatientFilter').value;
+      if(!file) { flash('Selecione um arquivo','warning'); return; }
+      if(!patientId){ flash('Selecione um paciente primeiro','warning'); return; }
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const base64 = reader.result.split(',')[1];
+        db.run("INSERT INTO files (organization_id,patient_id,filename,mime,data_base64,created_at) VALUES (?,?,?,?,?,?)", [currentOrgId, patientId, file.name, file.type, base64, nowISO()]);
+        auditLog(currentUser?.id || null, 'upload_file', 'files', null);
+        flash('Arquivo salvo no banco (base64)','success'); refreshFilesList();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function refreshFilesList(){
+      const fl = document.getElementById('filesList'); fl.innerHTML='';
+      const pf = document.getElementById('filesPatientFilter'); pf.innerHTML = '<option value="">-- Selecionar paciente --</option>';
+      const pats = db.exec("SELECT id,nome FROM patients WHERE organization_id = ?", [currentOrgId]);
+      if(pats && pats[0]) for(const r of pats[0].values){ const o=document.createElement('option'); o.value=r[0]; o.textContent=`${r[1]} (#${r[0]})`; pf.appendChild(o); }
+      const pid = pf.value || (pats && pats[0] && pats[0].values[0] && pats[0].values[0][0]);
+      if(!pid) return;
+      const res = db.exec("SELECT id,filename,mime,data_base64,created_at FROM files WHERE organization_id = ? AND patient_id = ?", [currentOrgId, pid]);
+      if(res && res[0]){
+        for(const r of res[0].values){
+          const id=r[0], filename=r[1], mime=r[2], data=r[3];
+          const div = document.createElement('div'); div.className='card p-2 mb-1';
+          let preview = '';
+          if(mime.startsWith('image/')) preview = `<img src="data:${mime};base64,${data}" class="file-preview">`;
+          else if(mime === 'application/pdf') preview = `<iframe src="data:${mime};base64,${data}" style="width:100%;height:200px;"></iframe>`;
+          else preview = `<div class="small-muted">${mime}</div>`;
+          div.innerHTML = `<div class="d-flex justify-content-between"><div><strong>${filename}</strong><div class="small-muted">${r[4]}</div></div><div><button class="btn btn-sm btn-outline-success">Download</button></div></div><div class="mt-2">${preview}</div>`;
+          div.querySelector('button').onclick = ()=>{
+            const blob = base64ToBlob(data, mime);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+          };
+          fl.appendChild(div);
+        }
+      }
+    }
+
+    function base64ToBlob(base64, mime){
+      const bytes = atob(base64);
+      let buf = new Uint8Array(bytes.length);
+      for(let i=0;i<bytes.length;i++) buf[i]=bytes.charCodeAt(i);
+      return new Blob([buf], {type:mime});
+    }
+
+    // AGENDA UI (simple)
+    function initAgendaUI(){
+      document.getElementById('agendaSection').classList.remove('hidden');
+      document.getElementById('newApptBtn').onclick = createNewAppointment;
+      document.getElementById('viewDayBtn').onclick = ()=>renderAgenda('day');
+      document.getElementById('viewWeekBtn').onclick = ()=>renderAgenda('week');
+      document.getElementById('viewMonthBtn').onclick = ()=>renderAgenda('month');
+      renderAgenda('day');
+    }
+
+    function renderAgenda(view='day'){
+      const timeSlots = document.getElementById('timeSlots'); timeSlots.innerHTML='';
+      for(let h=8;h<=18;h++){
+        const slot = document.createElement('div'); slot.className='drag-slot'; slot.dataset.time = `${h}:00`;
+        slot.innerHTML = `<strong>${h}:00</strong><div class="slot-body" data-time="${h}:00"></div>`;
+        timeSlots.appendChild(slot);
+      }
+      const apArea = document.getElementById('appointmentsArea'); apArea.innerHTML='';
+      const res = db.exec("SELECT id,patient_id,professional_id,data_hora,duracao,status FROM appointments WHERE organization_id = ? ORDER BY data_hora", [currentOrgId]);
+      if(res && res[0]){
+        for(const r of res[0].values){
+          const id=r[0], pid=r[1], prof=r[2], date=r[3], dur=r[4], status=r[5];
+          const dt = new Date(date); const hour = dt.getHours();
+          const el = document.createElement('div'); el.className='appointment'; el.dataset.id=id; el.innerHTML = `<strong>#${id}</strong> Paciente:${pid} Prof:${prof} <div class="small-muted">${dt.toLocaleString()}</div>`;
+          el.draggable = true;
+          el.ondragstart = (ev)=>{ ev.dataTransfer.setData('text/plain', id); };
+          // find slot
+          const slot = [...document.querySelectorAll('.slot-body')].find(s=>s.dataset.time.startsWith(hour+':'));
+          if(slot) slot.appendChild(el);
+          apArea.appendChild(el);
+        }
+      }
+      // Make slots droppable (Interact.js)
+      interact('.slot-body').dropzone({
+        accept: '.appointment',
+        ondrop: function (event) {
+          const apId = event.relatedTarget.dataset.id;
+          const targetTime = event.target.dataset.time;
+          // set appointment to today at that hour
+          const dt = new Date(); const parts = targetTime.split(':'); dt.setHours(Number(parts[0])); dt.setMinutes(0); dt.setSeconds(0);
+          db.run("UPDATE appointments SET data_hora = ? WHERE id = ?", [dt.toISOString(), apId]);
+          auditLog(currentUser?.id || null, 'move_appointment', 'appointments', apId);
+          flash('Agendamento movido para ' + dt.toLocaleString(), 'success');
+          renderAgenda(view);
+        }
+      });
+    }
+
+    function createNewAppointment(){
+      const pid = prompt('ID do paciente para agendar:');
+      if(!pid) return;
+      const dt = prompt('Data/Hora (ISO ou vazio para agora):');
+      const iso = dt ? new Date(dt).toISOString() : new Date().toISOString();
+      db.run("INSERT INTO appointments (organization_id,patient_id,professional_id,data_hora,duracao,sala,status,notas) VALUES (?,?,?,?,?,?,?,?)", [currentOrgId, pid, currentUser?.id || null, iso, 30, 'Sala A', 'confirmed', 'Criado manual']);
+      auditLog(currentUser?.id || null, 'create_appointment', 'appointments', null);
+      flash('Agendamento criado', 'success'); renderAgenda();
+    }
+
+    // BILLING UI
+    function initBillingUI(){
+      document.getElementById('billingSection').classList.remove('hidden');
+      document.getElementById('subscribeStarter').onclick = ()=>subscribePlan('Starter');
+      document.getElementById('subscribePro').onclick = ()=>subscribePlan('Pro');
+      document.getElementById('subscribeClinic').onclick = ()=>subscribePlan('Clinic');
+      refreshBillingInfo();
+    }
+    function subscribePlan(plan){
+      db.run("INSERT INTO billing_subscriptions (organization_id,user_id,plan,started_at,trial_until,status) VALUES (?,?,?,?,?,?)", [currentOrgId, currentUser?.id || null, plan, nowISO(), new Date(Date.now()+30*24*3600*1000).toISOString(), 'active']);
+      auditLog(currentUser?.id || null, 'subscribe', 'billing_subscriptions', null);
+      flash('Inscrito no plano ' + plan + ' (mock).', 'success'); refreshBillingInfo();
+    }
+    function refreshBillingInfo(){
+      const res = db.exec("SELECT plan,started_at,trial_until,status FROM billing_subscriptions WHERE organization_id = ? ORDER BY id DESC LIMIT 1", [currentOrgId]);
+      const area = document.getElementById('billingInfo'); area.innerHTML = '';
+      if(res && res[0] && res[0].values.length){
+        const r = res[0].values[0];
+        area.innerHTML = `<div>Plano: <strong>${r[0]}</strong><br/>Iniciado: ${r[1]}<br/>Trial até: ${r[2]}<br/>Status: ${r[3]}</div>`;
+      } else area.innerHTML = '<div class="small-muted">Nenhuma assinatura (mock)</div>';
+    }
+
+    // DASHBOARD
+    function initDashboard(){
+      document.getElementById('dashboardSection').classList.remove('hidden');
+      refreshDashboard();
+    }
+    function refreshDashboard(){
+      // Chart: appointments per day (last 7 days)
+      const apptsRes = db.exec("SELECT date(data_hora) as dia, count(*) as cnt FROM appointments WHERE organization_id = ? GROUP BY date(data_hora) ORDER BY dia DESC LIMIT 7", [currentOrgId]);
+      const labels = []; const data = [];
+      if(apptsRes && apptsRes[0]){
+        for(const r of apptsRes[0].values){ labels.push(r[0]); data.push(r[1]); }
+      }
+      const ctxA = document.getElementById('chartAppointments').getContext('2d');
+      if(charts.appts) charts.appts.destroy();
+      charts.appts = new Chart(ctxA, { type:'bar', data:{ labels:labels.reverse(), datasets:[{label:'Atendimentos', data:data.reverse(), backgroundColor:'#0d6efd'}] } });
+
+      // Chart: new patients evolution
+      const patsRes = db.exec("SELECT date(created_at) as dia, count(*) as cnt FROM patients WHERE organization_id = ? GROUP BY date(created_at) ORDER BY dia DESC LIMIT 7", [currentOrgId]);
+      const labels2=[]; const data2=[];
+      if(patsRes && patsRes[0]) for(const r of patsRes[0].values){ labels2.push(r[0]); data2.push(r[1]); }
+      const ctxP = document.getElementById('chartPatients').getContext('2d');
+      if(charts.pats) charts.pats.destroy();
+      charts.pats = new Chart(ctxP, { type:'line', data:{ labels:labels2.reverse(), datasets:[{label:'Novos pacientes', data:data2.reverse(), borderColor:'#198754', fill:false}] } });
+
+      // stats
+      const stats = document.getElementById('dashboardStats'); stats.innerHTML='';
+      const totalAppts = db.exec("SELECT count(*) FROM appointments WHERE organization_id = ?", [currentOrgId])[0].values[0][0];
+      const missed = db.exec("SELECT count(*) FROM appointments WHERE organization_id = ? AND status = 'miss'", [currentOrgId])[0].values[0][0];
+      const totalPatients = db.exec("SELECT count(*) FROM patients WHERE organization_id = ?", [currentOrgId])[0].values[0][0];
+      const avgTicket = (Math.random()*200).toFixed(2); // mock ticket médio
+      const html = `<div class="col-md-3"><div class="card p-2">Atendimentos: <strong>${totalAppts}</strong></div></div>
+      <div class="col-md-3"><div class="card p-2">Faltas: <strong>${missed}</strong></div></div>
+      <div class="col-md-3"><div class="card p-2">Pacientes: <strong>${totalPatients}</strong></div></div>
+      <div class="col-md-3"><div class="card p-2">Ticket médio (mock): <strong>R$ ${avgTicket}</strong></div></div>`;
+      stats.innerHTML = html;
+    }
+
+    // AUDIT UI
+    function initAuditUI(){
+      document.getElementById('auditSection').classList.remove('hidden');
+      document.getElementById('exportAuditBtn').onclick = ()=>{ exportAudit(); };
+      refreshAudit();
+    }
+    function refreshAudit(){
+      const res = db.exec("SELECT id,user_id,action,table_name,row_id,timestamp,ip,userAgent FROM audit_logs WHERE 1=1 ORDER BY id DESC LIMIT 100");
+      const area = document.getElementById('auditList'); area.innerHTML='';
+      if(res && res[0]){
+        for(const r of res[0].values){
+          const div = document.createElement('div'); div.className='card p-2 mb-1 AuditRow';
+          div.innerHTML = `<div><strong>${r[2]}</strong> table=${r[3]} row=${r[4]} byUser=${r[1]} at=${r[5]} ip=${r[6]}</div><div class="small-muted">${r[7]}</div>`;
+          area.appendChild(div);
+        }
+      }
+    }
+    function exportAudit(){
+      const res = db.exec("SELECT user_id,action,table_name,row_id,timestamp,ip,userAgent FROM audit_logs");
+      const rows = [];
+      if(res && res[0]){
+        for(const r of res[0].values) rows.push({user_id:r[0],action:r[1],table_name:r[2],row_id:r[3],timestamp:r[4],ip:'REDACTED',userAgent:r[6].slice(0,80)});
+      }
+      const blob = new Blob([JSON.stringify(rows,null,2)], {type:'application/json'});
+      const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='audit_export.json'; document.body.appendChild(a); a.click(); a.remove();
+      flash('Audit export (anonimizado) gerado','success');
+    }
+
+    // NAV
+    function bindNavLinks(){
+      document.querySelectorAll('.nav-link').forEach(a=>{
+        a.onclick = (e)=>{
+          e.preventDefault();
+          const t = a.dataset.target;
+          document.querySelectorAll('section.card').forEach(s=>s.classList.add('hidden'));
+          switch(t){
+            case 'onboarding': document.getElementById('onboardingSection').classList.remove('hidden'); break;
+            case 'patients': document.getElementById('patientsSection').classList.remove('hidden'); break;
+            case 'evolutions': document.getElementById('evolutionsSection').classList.remove('hidden'); break;
+            case 'agenda': document.getElementById('agendaSection').classList.remove('hidden'); break;
+            case 'files': document.getElementById('filesSection').classList.remove('hidden'); break;
+            case 'billing': document.getElementById('billingSection').classList.remove('hidden'); break;
+            case 'dashboard': document.getElementById('dashboardSection').classList.remove('hidden'); break;
+            case 'audit': document.getElementById('auditSection').classList.remove('hidden'); break;
+            case 'glossary': document.getElementById('glossarySection').classList.remove('hidden'); break;
+            case 'readme': document.getElementById('readmeSection').classList.remove('hidden'); break;
+          }
+        };
+      });
+    }
+
+    // Helpers: modals
+    function createModal(title, html){
+      const id = 'm' + Math.random().toString(36).slice(2,9);
+      const modalHtml = `<div class="modal fade" id="${id}" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">${title}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">${html}</div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button></div></div></div></div>`;
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      const el = document.getElementById(id);
+      const bs = new bootstrap.Modal(el);
+      el.addEventListener('hidden.bs.modal', ()=>el.remove());
+      return bs;
+    }
+
+    // Export evolutions to PDF via jsPDF
+    async function exportEvolutionsPDF(){
+      const res = db.exec("SELECT e.id, p.nome, e.content, e.created_at FROM evolutions e LEFT JOIN patients p ON e.patient_id = p.id WHERE e.organization_id = ? ORDER BY e.created_at DESC", [currentOrgId]);
+      if(!res || !res[0] || !res[0].values.length){ flash('Sem evoluções','warning'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 10;
+      for(const r of res[0].values){
+        const id=r[0], nome=r[1], content = r[2], created=r[3];
+        doc.setFontSize(12); doc.text(`Evolução #${id} - ${nome} - ${created}`, 10, y); y += 6;
+        const text = stripHtml(content).slice(0,1000);
+        doc.setFontSize(10); doc.text(text, 10, y); y += 20;
+        if(y>270){ doc.addPage(); y=10; }
+      }
+      doc.save('evolutions.pdf');
+      auditLog(currentUser?.id || null, 'export_pdf', 'evolutions', null);
+      flash('PDF de evoluções gerado', 'success');
+    }
+    function stripHtml(html){ return html.replace(/<[^>]*>?/gm, ''); }
+
+    // Misc UI bindings
+    function refreshAll(){
+      uiInit();
+      refreshPatientsList(); refreshEvolutionsList(); renderAgenda(); refreshFilesList(); refreshBillingInfo(); refreshDashboard(); refreshAudit();
+    }
+
+    // Bind actions
+    document.getElementById('loginLocalBtn').onclick = ()=> loginLocal(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value);
+    document.getElementById('signupBtn').onclick = ()=> {
+      const name = prompt('Nome:'); const email = prompt('Email:'); const pass = prompt('Senha:');
+      if(name && email && pass) signupLocal(name,email,pass);
+    };
+    document.getElementById('googleMockBtn').onclick = googleMockSignIn;
+    document.getElementById('logoutBtn').onclick = logout;
+    document.getElementById('importBtn').onclick = ()=> document.getElementById('sqliteFileInput').click();
+    document.getElementById('sqliteFileInput').onchange = (e)=> {
+      const f = e.target.files[0]; if(!f) return; loadDBFromFile(f);
+    };
+    document.getElementById('exportBtn').onclick = exportDB;
+    document.getElementById('backupJsonBtn')?.addEventListener('click', backupToJSON);
+    document.getElementById('resetBtn').onclick = resetDB;
+    document.getElementById('reloadSeedsBtn').onclick = ()=>{ initDB({seed:true}); refreshAll(); flash('Seeds recarregadas','success'); };
+    document.getElementById('startTourBtn').onclick = startTour;
+    document.getElementById('trySeedBtn').onclick = ()=>{ initDB({seed:true}); uiInit(); flash('Seeds carregadas', 'success'); };
+    document.getElementById('tryImportBtn').onclick = ()=> document.getElementById('sqliteFileInput').click();
+    document.getElementById('userBtn').onclick = ()=>{ document.querySelector('a[data-target="onboarding"]').click(); };
+
+    // Theme toggle
+    document.getElementById('themeToggle').onclick = ()=> {
+      const el = document.body; el.dataset.theme = el.dataset.theme === 'dark' ? 'light' : 'dark';
+    };
+
+    // Onboarding tour (simple)
+    function startTour(){
+      const steps = [
+        {title:'Bem-vindo', text:'Este tour mostra as principais áreas: Pacientes, Evoluções, Agenda, Arquivos, Dashboard e Auditoria.'},
+        {title:'Pacientes', text:'Aqui você cria/edita pacientes e importa/exporta CSV/JSON.'},
+        {title:'Evoluções', text:'Editor Quill para evoluções, versões e diffs.'},
+        {title:'Agenda', text:'Arraste agendamentos entre horários.'},
+        {title:'Salvar banco', text:'Faça export .sqlite regularmente — sem servidor/IndexedDB.'},
+      ];
+      let i=0;
+      function next(){
+        if(i>=steps.length) return;
+        const s = steps[i++];
+        const m = createModal(s.title, `<p>${s.text}</p><div class="d-flex justify-content-end"><button id="tourNext" class="btn btn-primary btn-sm">Próximo</button></div>`);
+        m.show();
+        document.getElementById('tourNext').onclick = ()=>{ m.hide(); next(); };
+      }
+      next();
+    }
+
+    // small helpers
+    function createElementFromHTML(htmlString) {
+      const div = document.createElement('div');
+      div.innerHTML = htmlString.trim();
+      return div.firstChild;
+    }
+
+    // Export/import DB via FS Access API if available
+    async function tryAutoOpenLast() {
+      // Not storing handles (no IndexedDB), so cannot auto-open previous files.
+      // We'll simply show a notice suggesting import/export.
+    }
+
+    // Readme on load
+    window.addEventListener('load', ()=>{
+      initEngine();
+      tryAutoOpenLast();
+      // show onboarding first
+      document.querySelector('a[data-target="onboarding"]').click();
+    });
+
+    // Additional UI wiring
+    document.getElementById('resetPassLink').onclick = (e)=>{ e.preventDefault(); const email = prompt('Email para reset (mock):'); if(email) alert('Mock: enviar email com link de reset para '+email + '\\nEm produção, integrar SMTP/Serviço.'); };
+
+    // Allow import JSON restore via drag/drop
+    window.addEventListener('dragover', e=>e.preventDefault());
+    window.addEventListener('drop', e=>{
+      e.preventDefault();
+      for(const f of e.dataTransfer.files){
+        if(f.name.endsWith('.sqlite') || f.name.endsWith('.db')) loadDBFromFile(f);
+        else if(f.name.endsWith('.json')) restoreFromJSONFile(f);
+      }
+    });
+
+  </script>
+</body>
+</html>S OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
