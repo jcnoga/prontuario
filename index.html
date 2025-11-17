@@ -1,0 +1,1542 @@
+<!--
+LICENÇA: MIT License
+
+Copyright (c) 2023 [Seu Nome ou Nome da Empresa]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Notas sobre uso comercial:
+Este código é um ponto de partida para um Prontuário Eletrônico Premium.
+Ele simula funcionalidades de backend para demonstração. Para uso comercial em produção,
+é crucial implementar um backend robusto para autenticação real, segurança de dados,
+escalabilidade e integração com serviços externos (pagamentos, 2FA, e-mail/SMS, assinatura digital legal).
+A criptografia local provida é básica e não deve ser considerada como segurança de nível de produção sem validação de especialistas.
+-->
+
+<!-- Git Commit Message para o deploy inicial: -->
+<!--
+git commit -m "Add single-file Prontuario Eletronico Premium — initial"
+-->
+
+<!-- README.md para o repositório GitHub Pages: -->
+<!--
+# Prontuário Eletrônico Premium (Single File for GitHub Pages)
+
+Este é um projeto de Prontuário Eletrônico Premium implementado em um único arquivo HTML (`index.html`), projetado para ser facilmente implantado no GitHub Pages. Ele simula muitas funcionalidades complexas de um sistema SaaS real usando armazenamento local (IndexedDB) e oferece placeholders claros para integração futura com serviços de backend.
+
+## Funcionalidades Principais:
+
+-   **Multi-tenant Local:** Gerencie múltiplas organizações diretamente no navegador.
+-   **Autenticação Local:** Login com e-mail/senha armazenados localmente, com mocks para login social (Google) e 2FA.
+-   **RBAC (Role-Based Access Control):** Gerenciamento de usuários e permissões por função.
+-   **CRUD de Pacientes:** Ficha completa, histórico, evoluções, arquivos, consentimento LGPD.
+-   **Evoluções/Atendimentos:** Editor rich text, templates, histórico de versões, assinatura digital mock.
+-   **Agenda Inteligente:** Visualizações de dia/semana/mês, drag-and-drop, filtros.
+-   **Arquivos:** Upload, pré-visualização, organização por paciente.
+-   **Documentos:** Gerador de prescrições/atestados com exportação para PDF.
+-   **Dashboard:** Métricas e gráficos interativos (Chart.js).
+-   **Billing Mock:** Simulação de planos e assinaturas.
+-   **Segurança & LGPD:** Consentimento, logs de auditoria, criptografia local básica.
+-   **Export/Import/Backup:** Ferramentas para gerenciamento de dados locais.
+-   **UI/UX:** Layout responsivo (Bootstrap), tema claro/escuro, tooltips, tutorial.
+
+## Como fazer o Deploy no GitHub Pages:
+
+1.  **Crie um novo repositório GitHub:** Vá para [github.com/new](https://github.com/new).
+2.  **Clone o repositório** para sua máquina local.
+3.  **Copie este arquivo `index.html`** para a raiz do seu repositório.
+4.  **Faça commit e push:**
+    ```bash
+    git add index.html
+    git commit -m "Add single-file Prontuario Eletronico Premium — initial"
+    git push origin main
+    ```
+5.  **Ative o GitHub Pages:**
+    *   No seu repositório GitHub, vá em `Settings` (Configurações).
+    *   No menu lateral esquerdo, clique em `Pages`.
+    *   Em `Build and deployment`, certifique-se de que `Source` esteja configurado para `Deploy from a branch`.
+    *   Em `Branch`, selecione `main` (ou a branch que você usou) e escolha a pasta `/(root)`.
+    *   Clique em `Save`.
+6.  **Acesse seu aplicativo:** O GitHub Pages levará alguns minutos para construir. Seu aplicativo estará disponível em `https://[seu-usuario].github.io/[nome-do-repositorio]`.
+
+## Observações Importantes (Limitações e Futuras Integrações):
+
+Este aplicativo é um MVP funcional para demonstração. **Não deve ser usado em produção sem um backend real.**
+
+-   **Autenticação:** O login social (Google), 2FA e reset de senha são mocks. Para produção, integre com Google OAuth, Twilio/Auth0 para 2FA real e um serviço de e-mail (SendGrid/Mailgun) para reset de senha seguro.
+-   **Armazenamento de Dados:** Usa IndexedDB, que é local ao navegador. **Não há sincronização ou backup automático na nuvem.** Recomenda-se exportar dados JSON periodicamente. Para produção, migre para um banco de dados de backend (PostgreSQL, MongoDB).
+-   **Assinatura Digital:** A assinatura visual é apenas um mock. Para validade jurídica, integre com serviços como DocuSign, HelloSign ou ICP-Brasil.
+-   **Cobrança Recorrente:** A seção de billing é um placeholder. Integre com Stripe, PayPal ou outro gateway de pagamento para transações reais.
+-   **Comunicações (E-mail/WhatsApp):** As notificações e envios são mocks. Use APIs como Twilio, Zenvia ou serviços de e-mail para envio real de mensagens.
+-   **Segurança:** A criptografia local é básica e para fins de demonstração. Um backend provê segurança muito superior, especialmente para dados sensíveis de saúde.
+-   **Arquivos:** Os arquivos são armazenados como Base64 ou Blob URLs localmente, o que pode consumir bastante espaço no IndexedDB. Para produção, use armazenamento em nuvem (AWS S3, Google Cloud Storage).
+
+Este projeto é uma base excelente para evoluir para um SaaS completo. Basta conectar os endpoints do backend onde indicado nos comentários do código!
+-->
+<!DOCTYPE html>
+<html lang="pt-BR" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prontuário Eletrônico Premium</title>
+
+    <!-- CDNs para Bibliotecas Essenciais -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/quill@1.3.6/dist/quill.snow.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/main.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.10/main.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.10/main.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.10/main.min.css" rel="stylesheet" />
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/idb@7.1.1/build/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill@1.3.6/dist/quill.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/localizedFormat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isBetween.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/utc.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/timezone.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/csv-parse@5.5.3/dist/cjs/index.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/bootstrap5@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --background-color: #f8f9fa;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --border-color: #dee2e6;
+        }
+        [data-bs-theme="dark"] {
+            --primary-color: #6daffb;
+            --secondary-color: #adb5bd;
+            --background-color: #212529;
+            --text-color: #f8f9fa;
+            --card-bg: #343a40;
+            --border-color: #495057;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .navbar, .footer {
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .sidebar {
+            background-color: var(--card-bg);
+            border-right: 1px solid var(--border-color);
+            min-height: calc(100vh - 56px); /* Altura da navbar */
+            padding-top: 1rem;
+        }
+        .nav-link.active {
+            background-color: var(--primary-color) !important;
+            color: white !important;
+            border-radius: .25rem;
+        }
+        .nav-link {
+            color: var(--text-color);
+        }
+        .nav-link:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+        .form-control, .form-select, .ql-toolbar.ql-snow, .ql-container.ql-snow {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .modal-content {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+        }
+        .modal-header {
+            border-bottom-color: var(--border-color);
+        }
+        .modal-footer {
+            border-top-color: var(--border-color);
+        }
+        .tooltip-icon {
+            cursor: help;
+            margin-left: 5px;
+            color: var(--secondary-color);
+        }
+        .alert {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+            color: var(--text-color);
+        }
+        .toast {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        .trial-indicator {
+            background-color: #ffc107;
+            color: #343a40;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-left: 15px;
+        }
+        .signature-area {
+            border: 1px dashed var(--border-color);
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary-color);
+            text-align: center;
+        }
+        .signature-img {
+            max-width: 100%;
+            max-height: 90px;
+        }
+        .quill-container {
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            min-height: 200px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        .quill-container .ql-editor {
+            color: var(--text-color);
+        }
+        .quill-container .ql-stroke {
+            fill: none;
+            stroke: var(--text-color);
+        }
+        .quill-container .ql-fill {
+            fill: var(--text-color);
+        }
+        .fullcalendar {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        .fc .fc-button-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .fc .fc-button-primary:not(:disabled):active {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .fc-theme-bootstrap5 a {
+            color: var(--text-color);
+        }
+        .fc-theme-bootstrap5 .fc-bg-event {
+            opacity: 0.1;
+        }
+        .fc-event {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+        .drag-drop-area {
+            border: 2px dashed var(--border-color);
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            margin-bottom: 1rem;
+        }
+        .drag-drop-area.highlight {
+            background-color: rgba(0, 123, 255, 0.1);
+            border-color: var(--primary-color);
+        }
+        .file-preview {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+        }
+        .online-status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            z-index: 1000;
+        }
+        .online-status.online {
+            background-color: #28a745;
+            color: white;
+        }
+        .online-status.offline {
+            background-color: #dc3545;
+            color: white;
+        }
+        .header-action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        @media (max-width: 767.98px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .content-area {
+                margin-left: 0 !important;
+            }
+            .header-action-buttons {
+                justify-content: center;
+                margin-top: 10px;
+            }
+        }
+        /* Style for tour steps */
+        .tour-highlight {
+            border: 2px solid var(--primary-color);
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+            transition: all 0.3s ease-in-out;
+        }
+        .tour-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 9998;
+            pointer-events: none; /* Allow interaction with underlying elements if needed for advanced tour */
+        }
+        .tour-tooltip {
+            position: absolute;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+            max-width: 300px;
+            color: var(--text-color);
+        }
+        .tour-tooltip button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-spinner" class="d-flex justify-content-center align-items-center" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+
+    <!-- Onboarding / Login / Org Selector -->
+    <div id="onboarding-screen" class="d-flex flex-column justify-content-center align-items-center vh-100 p-3" style="display: none;">
+        <div class="card p-5 shadow-lg text-center" style="max-width: 600px;">
+            <h1 class="card-title mb-4">Bem-vindo ao Prontuário Eletrônico Premium</h1>
+            <p class="card-text mb-4">Este é um sistema de prontuário eletrônico completo, funcionando diretamente no seu navegador, perfeito para demonstrações e uso offline. Ele foi projetado para ser facilmente integrado a um backend real no futuro.</p>
+
+            <div id="org-selection-area" class="mb-4" style="display: none;">
+                <h5 class="mb-3">Selecione sua Organização:</h5>
+                <select id="org-select" class="form-select mb-3"></select>
+                <button id="create-new-org-btn" class="btn btn-outline-primary me-2"><i class="fas fa-plus-circle me-1"></i> Criar Nova Organização</button>
+                <button id="select-org-proceed-btn" class="btn btn-primary" disabled><i class="fas fa-arrow-right me-1"></i> Entrar</button>
+            </div>
+
+            <div id="login-register-area" class="mb-4" style="display: none;">
+                <h5 class="mb-3">Entrar ou Registrar</h5>
+                <input type="email" id="login-email" class="form-control mb-2" placeholder="Seu e-mail">
+                <input type="password" id="login-password" class="form-control mb-3" placeholder="Sua senha">
+                <div class="d-grid gap-2 mb-3">
+                    <button id="login-btn" class="btn btn-primary"><i class="fas fa-sign-in-alt me-1"></i> Entrar</button>
+                    <button id="register-btn" class="btn btn-outline-secondary"><i class="fas fa-user-plus me-1"></i> Registrar Novo Usuário</button>
+                    <button id="reset-password-mock-btn" class="btn btn-link text-decoration-none">Esqueceu a senha?</button>
+                </div>
+
+                <div class="separator my-3">Ou</div>
+                <button id="google-login-mock-btn" class="btn btn-outline-danger w-100 mb-2"><i class="fab fa-google me-1"></i> Entrar com Google (Mock)</button>
+                <button id="login-back-to-org-select-btn" class="btn btn-sm btn-link mt-2"><i class="fas fa-arrow-left me-1"></i> Voltar para seleção de organização</button>
+            </div>
+
+            <button id="seed-data-btn" class="btn btn-success me-2 mt-3"><i class="fas fa-seedling me-1"></i> Carregar Dados de Exemplo</button>
+            <button id="skip-onboarding-btn" class="btn btn-secondary mt-3"><i class="fas fa-arrow-right me-1"></i> Pular Onboarding (Limpo)</button>
+        </div>
+    </div>
+
+    <!-- Main App Layout -->
+    <div id="main-app" style="display: none;" class="d-flex flex-column flex-grow-1">
+        <nav class="navbar navbar-expand-lg sticky-top">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <i class="fas fa-notes-medical me-2"></i>Prontuário Premium
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <!-- Itens do menu principal podem ser adicionados aqui se necessário -->
+                    </ul>
+                    <div class="d-flex align-items-center">
+                        <span id="trial-indicator" class="trial-indicator me-3" style="display:none;"><i class="fas fa-star me-1"></i> Trial de 7 dias!</span>
+                        <span class="me-3">Org: <strong id="current-org-name"></strong></span>
+                        <span class="me-3">Usuário: <strong id="current-user-name"></strong> (<span id="current-user-role"></span>)</span>
+                        <div class="form-check form-switch me-3">
+                            <input class="form-check-input" type="checkbox" id="darkModeToggle">
+                            <label class="form-check-label" for="darkModeToggle"><i class="fas fa-moon"></i></label>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user-circle"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="#" id="profile-link"><i class="fas fa-user-cog me-2"></i>Meu Perfil</a></li>
+                                <li><a class="dropdown-item" href="#" id="manage-orgs-link"><i class="fas fa-building me-2"></i>Gerenciar Organizações</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" id="logout-btn"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="d-flex flex-grow-1">
+            <!-- Sidebar -->
+            <div class="sidebar d-flex flex-column flex-shrink-0 p-3 bg-light" style="width: 280px;">
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="#dashboard" class="nav-link active" data-target="dashboard">
+                            <i class="fas fa-chart-line me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#patients" class="nav-link" data-target="patients">
+                            <i class="fas fa-user-injured me-2"></i>Pacientes
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#appointments" class="nav-link" data-target="appointments">
+                            <i class="fas fa-calendar-alt me-2"></i>Agenda
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#evolutions" class="nav-link" data-target="evolutions" style="display:none;">
+                            <i class="fas fa-notes-medical me-2"></i>Evoluções
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#documents" class="nav-link" data-target="documents">
+                            <i class="fas fa-file-alt me-2"></i>Documentos & Prescrições
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#files" class="nav-link" data-target="files">
+                            <i class="fas fa-folder me-2"></i>Arquivos
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#team" class="nav-link" data-target="team">
+                            <i class="fas fa-users-cog me-2"></i>Equipe & Permissões
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#billing" class="nav-link" data-target="billing">
+                            <i class="fas fa-dollar-sign me-2"></i>Assinatura & Planos
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#audit-logs" class="nav-link" data-target="audit-logs">
+                            <i class="fas fa-clipboard-list me-2"></i>Logs de Auditoria
+                        </a>
+                    </li>
+                    <li><hr></li>
+                    <li>
+                        <a href="#settings" class="nav-link" data-target="settings">
+                            <i class="fas fa-cogs me-2"></i>Configurações
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#help" class="nav-link" data-target="help">
+                            <i class="fas fa-question-circle me-2"></i>Ajuda & Documentação
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#glossary" class="nav-link" data-target="glossary">
+                            <i class="fas fa-book me-2"></i>Glossário
+                        </a>
+                    </li>
+                    <li><hr></li>
+                    <li>
+                        <button class="btn btn-outline-danger w-100" id="clear-all-data-btn"><i class="fas fa-trash me-2"></i>Limpar TODOS os Dados</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Main Content Area -->
+            <main class="content-area flex-grow-1 p-4 overflow-auto">
+                <div id="content-dashboard" class="content-section">
+                    <h2 class="mb-4">Dashboard da Organização <i class="fas fa-chart-line"></i></h2>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i> Este dashboard fornece uma visão geral das métricas da sua clínica. Dados financeiros são simulados.
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card p-3 h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">Atendimentos no Mês</h5>
+                                    <i class="fas fa-calendar-check fa-2x text-primary"></i>
+                                </div>
+                                <h3 id="dashboard-total-appointments">0</h3>
+                                <p class="card-text text-muted">Total de agendamentos finalizados este mês.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-3 h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">Taxa de Faltas</h5>
+                                    <i class="fas fa-user-slash fa-2x text-warning"></i>
+                                </div>
+                                <h3 id="dashboard-missed-rate">0%</h3>
+                                <p class="card-text text-muted">Percentual de pacientes que faltaram aos agendamentos.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-3 h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">Novos Pacientes (30 dias)</h5>
+                                    <i class="fas fa-user-plus fa-2x text-success"></i>
+                                </div>
+                                <h3 id="dashboard-new-patients">0</h3>
+                                <p class="card-text text-muted">Pacientes registrados nos últimos 30 dias.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card p-3">
+                                <h5 class="card-title mb-3">Atendimentos por Mês</h5>
+                                <canvas id="appointmentsChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card p-3">
+                                <h5 class="card-title mb-3">Receita Mensal (Mock)</h5>
+                                <canvas id="revenueChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="card p-3">
+                                <h5 class="card-title mb-3">Ocupação por Profissional (Mock)</h5>
+                                <canvas id="professionalOccupationChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="content-patients" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                        <h2 class="mb-0">Pacientes <i class="fas fa-user-injured"></i></h2>
+                        <div class="header-action-buttons">
+                            <button class="btn btn-primary" id="new-patient-btn"><i class="fas fa-plus-circle me-2"></i>Adicionar Paciente</button>
+                            <button class="btn btn-outline-secondary" id="import-patients-btn"><i class="fas fa-upload me-2"></i>Importar CSV</button>
+                            <button class="btn btn-outline-secondary" id="export-patients-btn"><i class="fas fa-download me-2"></i>Exportar CSV</button>
+                        </div>
+                    </div>
+                    <input type="text" id="patient-search" class="form-control mb-4" placeholder="Buscar paciente por nome ou CPF...">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>CPF</th>
+                                    <th>Data Nasc.</th>
+                                    <th>Telefone</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patients-list">
+                                <tr><td colspan="6" class="text-center">Nenhum paciente encontrado.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="content-appointments" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                        <h2 class="mb-0">Agenda <i class="fas fa-calendar-alt"></i></h2>
+                        <div class="header-action-buttons">
+                            <button class="btn btn-primary" id="new-appointment-btn"><i class="fas fa-plus-circle me-2"></i>Novo Agendamento</button>
+                            <select id="appointment-professional-filter" class="form-select w-auto me-2">
+                                <option value="">Todos os Profissionais</option>
+                                <!-- Profissionais serão carregados aqui -->
+                            </select>
+                        </div>
+                    </div>
+                    <div id='calendar' class="fullcalendar"></div>
+                    <div class="card mt-4 p-3">
+                        <h5>Log de Notificações (Mock)</h5>
+                        <div id="notification-log" class="small text-muted" style="max-height: 150px; overflow-y: auto;">
+                            Nenhuma notificação enviada ainda.
+                        </div>
+                        <small class="mt-2 text-info"><i class="fas fa-info-circle"></i> As notificações são simuladas. Para envio real, integre com APIs de SMS/WhatsApp/E-mail (Twilio, Zenvia, SendGrid).</small>
+                    </div>
+                </div>
+
+                <div id="content-evolutions" class="content-section" style="display: none;">
+                    <h2 class="mb-4">Evoluções <i class="fas fa-notes-medical"></i></h2>
+                    <p>Esta seção é acessada através da ficha do paciente. Selecione um paciente para ver suas evoluções.</p>
+                </div>
+
+                <div id="content-documents" class="content-section" style="display: none;">
+                    <h2 class="mb-4">Documentos & Prescrições <i class="fas fa-file-alt"></i></h2>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i> Selecione um paciente para gerar documentos específicos. Aqui você pode criar modelos gerais.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card p-3 mb-4">
+                                <h5 class="card-title">Gerar Documento Avulso</h5>
+                                <div class="mb-3">
+                                    <label for="doc-patient-select" class="form-label">Paciente</label>
+                                    <select id="doc-patient-select" class="form-select"></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="doc-type-select" class="form-label">Tipo de Documento</label>
+                                    <select id="doc-type-select" class="form-select">
+                                        <option value="prescription">Prescrição</option>
+                                        <option value="exam_request">Solicitação de Exame</option>
+                                        <option value="medical_certificate">Atestado Médico</option>
+                                        <option value="medical_report">Laudo Médico</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="doc-template-select" class="form-label">Template</label>
+                                    <select id="doc-template-select" class="form-select">
+                                        <option value="">(Nenhum template)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="doc-content" class="form-label">Conteúdo do Documento</label>
+                                    <div id="doc-content-editor" class="quill-container"></div>
+                                </div>
+                                <button class="btn btn-primary" id="generate-document-pdf-btn"><i class="fas fa-file-pdf me-2"></i>Gerar PDF</button>
+                                <button class="btn btn-outline-success mt-2" id="mock-send-doc-btn"><i class="fas fa-paper-plane me-2"></i>Enviar (Mock)</button>
+                                <small class="mt-2 text-info"><i class="fas fa-info-circle"></i> O envio é simulado. Para envio real, integre com APIs de WhatsApp/E-mail.</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card p-3 mb-4">
+                                <h5 class="card-title">Gerenciar Templates de Documentos</h5>
+                                <button class="btn btn-outline-primary mb-3" id="new-template-btn"><i class="fas fa-plus me-2"></i>Novo Template</button>
+                                <ul id="template-list" class="list-group">
+                                    <!-- Templates will be listed here -->
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">Nenhum template cadastrado.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="content-files" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                        <h2 class="mb-0">Arquivos <i class="fas fa-folder"></i></h2>
+                        <div class="header-action-buttons">
+                            <label for="file-upload-input" class="btn btn-primary mb-0 me-2"><i class="fas fa-upload me-2"></i>Upload Arquivo</label>
+                            <input type="file" id="file-upload-input" class="d-none" multiple>
+                            <select id="files-patient-filter" class="form-select w-auto me-2">
+                                <option value="">Todos os Pacientes</option>
+                                <!-- Pacientes serão carregados aqui -->
+                            </select>
+                            <select id="files-folder-filter" class="form-select w-auto">
+                                <option value="">Todas as Pastas</option>
+                                <option value="Exames">Exames</option>
+                                <option value="Receitas">Receitas</option>
+                                <option value="Documentos">Documentos</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="file-drag-drop-area" class="drag-drop-area">
+                        <p><i class="fas fa-cloud-upload-alt fa-3x text-primary"></i></p>
+                        <p>Arraste e solte arquivos aqui ou clique para selecionar.</p>
+                        <small class="text-muted"><i class="fas fa-info-circle"></i> Os arquivos são armazenados localmente no seu navegador. Para produção, integre com um serviço de armazenamento em nuvem (ex: AWS S3).</small>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nome do Arquivo</th>
+                                    <th>Paciente</th>
+                                    <th>Pasta</th>
+                                    <th>Tipo</th>
+                                    <th>Tamanho</th>
+                                    <th>Data Upload</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="files-list">
+                                <tr><td colspan="7" class="text-center">Nenhum arquivo enviado.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="content-team" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                        <h2 class="mb-0">Equipe & Permissões <i class="fas fa-users-cog"></i></h2>
+                        <div class="header-action-buttons">
+                            <button class="btn btn-primary" id="add-team-member-btn"><i class="fas fa-user-plus me-2"></i>Adicionar Membro</button>
+                        </div>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i> Gerencie os usuários da sua organização e atribua papéis. As permissões são aplicadas localmente no navegador.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>Papel</th>
+                                    <th>2FA Ativo?</th>
+                                    <th>Último Login</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="team-list">
+                                <tr><td colspan="6" class="text-center">Nenhum membro da equipe encontrado.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="content-billing" class="content-section" style="display: none;">
+                    <h2 class="mb-4">Assinatura & Planos <i class="fas fa-dollar-sign"></i></h2>
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i> Esta seção é um **MOCK**. Não há cobrança real. Para integrar pagamentos, você precisará de um backend e APIs como Stripe ou PayPal.
+                    </div>
+
+                    <div class="card p-4 mb-4">
+                        <h4 class="mb-3">Seu Plano Atual</h4>
+                        <div id="current-subscription-info">
+                            <p>Status: <span class="badge bg-success" id="sub-status">Ativo</span></p>
+                            <p>Plano: <strong id="sub-plan-name">Starter</strong> (<span id="sub-plan-price">R$ 49/mês</span>)</p>
+                            <p>Início: <span id="sub-start-date">--</span></p>
+                            <p>Próxima Cobrança: <span id="sub-next-bill-date">--</span></p>
+                            <p class="text-info" id="sub-trial-note" style="display:none;"><i class="fas fa-info-circle"></i> Você está em período de trial! Faltam <span id="sub-trial-days-left"></span> dias.</p>
+                        </div>
+                        <hr>
+                        <button class="btn btn-outline-primary mt-3" id="change-plan-btn"><i class="fas fa-sync-alt me-2"></i>Alterar Plano</button>
+                        <button class="btn btn-outline-danger mt-2" id="cancel-subscription-btn"><i class="fas fa-times-circle me-2"></i>Cancelar Assinatura (Mock)</button>
+                    </div>
+
+                    <div id="plan-selection-area" class="card p-4 mb-4" style="display:none;">
+                        <h4 class="mb-3">Escolha seu Plano</h4>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 p-3 text-center border-primary">
+                                    <h5 class="card-title">Plano Starter</h5>
+                                    <h2 class="mb-3">R$ 49 <small>/mês</small></h2>
+                                    <ul class="list-unstyled text-start mb-4">
+                                        <li><i class="fas fa-check text-success me-2"></i>1 Usuário</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>20 Pacientes</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Armazenamento Básico</li>
+                                        <li><i class="fas fa-times text-danger me-2"></i>Sem Templates Avançados</li>
+                                    </ul>
+                                    <button class="btn btn-primary select-plan-btn" data-plan="starter"><i class="fas fa-check-circle me-2"></i>Selecionar</button>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 p-3 text-center">
+                                    <h5 class="card-title">Plano Pro</h5>
+                                    <h2 class="mb-3">R$ 99 <small>/mês</small></h2>
+                                    <ul class="list-unstyled text-start mb-4">
+                                        <li><i class="fas fa-check text-success me-2"></i>5 Usuários</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>500 Pacientes</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Armazenamento Ilimitado</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Templates Avançados</li>
+                                    </ul>
+                                    <button class="btn btn-outline-primary select-plan-btn" data-plan="pro"><i class="fas fa-check-circle me-2"></i>Selecionar</button>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 p-3 text-center">
+                                    <h5 class="card-title">Plano Clinic</h5>
+                                    <h2 class="mb-3">R$ 199 <small>/mês</small></h2>
+                                    <ul class="list-unstyled text-start mb-4">
+                                        <li><i class="fas fa-check text-success me-2"></i>Usuários Ilimitados</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Pacientes Ilimitados</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Armazenamento Ilimitado</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Todos os Recursos</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Suporte Prioritário</li>
+                                    </ul>
+                                    <button class="btn btn-outline-primary select-plan-btn" data-plan="clinic"><i class="fas fa-check-circle me-2"></i>Selecionar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary mt-3" id="cancel-plan-change-btn">Cancelar</button>
+                    </div>
+
+                    <button class="btn btn-success mt-3" id="start-trial-btn" style="display:none;"><i class="fas fa-star me-2"></i>Iniciar Trial de 7 Dias</button>
+                    <small class="mt-2 text-info"><i class="fas fa-info-circle"></i> Para processar pagamentos reais, você precisará integrar com provedores como Stripe ou PayPal.</small>
+                </div>
+
+                <div id="content-audit-logs" class="content-section" style="display: none;">
+                    <h2 class="mb-4">Logs de Auditoria <i class="fas fa-clipboard-list"></i></h2>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i> Este log registra ações importantes realizadas no sistema para fins de segurança e conformidade.
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <input type="text" id="audit-filter-user" class="form-control" placeholder="Filtrar por usuário...">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" id="audit-filter-action" class="form-control" placeholder="Filtrar por ação...">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="date" id="audit-filter-date" class="form-control">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Usuário</th>
+                                    <th>Ação</th>
+                                    <th>Detalhes</th>
+                                    <th>IP (Simulado)</th>
+                                    <th>User Agent</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-logs-list">
+                                <tr><td colspan="6" class="text-center">Nenhum log de auditoria encontrado.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="content-settings" class="content-section" style="display: none;">
+                    <h2 class="mb-4">Configurações <i class="fas fa-cogs"></i></h2>
+                    <div class="card p-4 mb-4">
+                        <h4 class="mb-3">Configurações da Organização</h4>
+                        <div class="mb-3">
+                            <label for="org-name-setting" class="form-label">Nome da Organização</label>
+                            <input type="text" id="org-name-setting" class="form-control" placeholder="Nome da sua clínica/organização">
+                        </div>
+                        <div class="mb-3">
+                            <label for="org-address-setting" class="form-label">Endereço</label>
+                            <input type="text" id="org-address-setting" class="form-control" placeholder="Endereço completo">
+                        </div>
+                        <div class="mb-3">
+                            <label for="org-phone-setting" class="form-label">Telefone</label>
+                            <input type="text" id="org-phone-setting" class="form-control" placeholder="(XX) XXXXX-XXXX">
+                        </div>
+                        <div class="mb-3">
+                            <label for="org-email-setting" class="form-label">Email de Contato</label>
+                            <input type="email" id="org-email-setting" class="form-control" placeholder="contato@suaclinica.com">
+                        </div>
+                        <button class="btn btn-primary" id="save-org-settings-btn"><i class="fas fa-save me-2"></i>Salvar Configurações da Organização</button>
+                    </div>
+
+                    <div class="card p-4 mb-4">
+                        <h4 class="mb-3">Exportar / Importar Dados</h4>
+                        <p class="text-muted"><i class="fas fa-info-circle"></i> Recomendamos exportar seus dados regularmente para backup.</p>
+                        <button class="btn btn-outline-primary mb-2" id="export-db-json-btn"><i class="fas fa-download me-2"></i>Exportar DB Completo (JSON)</button>
+                        <p class="small text-muted">Aviso: A importação irá sobrescrever os dados da organização atual.</p>
+                        <input type="file" id="import-db-json-input" class="form-control mb-2" accept=".json">
+                        <button class="btn btn-warning" id="import-db-json-btn" disabled><i class="fas fa-upload me-2"></i>Importar DB (JSON)</button>
+                    </div>
+                </div>
+
+                <div id="content-help" class="content-section" style="display: none;">
+                    <h2 class="mb-4">Ajuda & Documentação <i class="fas fa-question-circle"></i></h2>
+                    <div class="card p-4 mb-4">
+                        <h4 class="mb-3">Tutorial de Primeiros Passos</h4>
+                        <p>Clique no botão abaixo para iniciar um tour guiado pelas principais funcionalidades do sistema.</p>
+                        <button class="btn btn-info" id="start-tour-btn"><i class="fas fa-play-circle me-2"></i>Iniciar Tour</button>
+                        <hr>
+                        <h4 class="mb-3">README / Deploy no GitHub Pages</h4>
+                        <p>Esta seção contém as instruções para deploy e notas importantes sobre as limitações e futuras integrações do sistema.</p>
+                        <pre class="bg-light p-3 rounded" style="white-space: pre-wrap; word-wrap: break-word; color: var(--text-color); border: 1px solid var(--border-color);">
+<code id="embedded-readme">
+<!-- O conteúdo do README embutido será injetado aqui via JS -->
+</code>
+                        </pre>
+                        <p class="small text-muted mt-3"><i class="fas fa-lightbulb"></i> Para transformar este app em um produto real com backend, você precisará implementar:
+                            <ul>
+                                <li>**Autenticação:** Google OAuth, JWTs, 2FA real (via SMS/TOTP).</li>
+                                <li>**Banco de Dados:** PostgreSQL, MongoDB ou similar, na nuvem.</li>
+                                <li>**Armazenamento de Arquivos:** AWS S3, Google Cloud Storage.</li>
+                                <li>**Pagamentos:** Integração com Stripe, PayPal, PagSeguro.</li>
+                                <li>**Comunicações:** APIs de E-mail (SendGrid, Mailgun) e SMS/WhatsApp (Twilio, Zenvia).</li>
+                                <li>**Assinatura Digital:** Integração com DocuSign, HelloSign ou ICP-Brasil para validade jurídica.</li>
+                                <li>**API RESTful:** Para comunicação entre o frontend e o backend.</li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+
+                <div id="content-glossary" class="content-section" style="display: none;">
+                    <h2 class="mb-4">Glossário <i class="fas fa-book"></i></h2>
+                    <div class="card p-4">
+                        <h4 class="mb-3">Termos Comuns</h4>
+                        <dl class="row">
+                            <dt class="col-sm-3">CMV</dt>
+                            <dd class="col-sm-9">Custo da Mercadoria Vendida. Em clínicas, pode ser adaptado para Custo do Serviço Prestado.</dd>
+
+                            <dt class="col-sm-3">Ticket Médio</dt>
+                            <dd class="col-sm-9">Valor médio gasto por paciente em um determinado período. Calculado como Receita Total / Número de Atendimentos.</dd>
+
+                            <dt class="col-sm-3">Margem</dt>
+                            <dd class="col-sm-9">Lucro obtido sobre o custo de um serviço ou produto, geralmente expresso em porcentagem. (Receita - Custo) / Receita.</dd>
+
+                            <dt class="col-sm-3">Consentimento LGPD</dt>
+                            <dd class="col-sm-9">Autorização expressa e inequívoca do paciente para o tratamento de seus dados pessoais, conforme a Lei Geral de Proteção de Dados.</dd>
+
+                            <dt class="col-sm-3">Evolução</dt>
+                            <dd class="col-sm-9">Registro detalhado de cada atendimento ou acompanhamento do paciente, incluindo anamnese, conduta, exames e plano terapêutico.</dd>
+
+                            <dt class="col-sm-3">Anamnese</dt>
+                            <dd class="col-sm-9">Coleta de dados sobre a história clínica do paciente, seus sintomas, estilo de vida e histórico familiar, essencial para o diagnóstico.</dd>
+
+                            <dt class="col-sm-3">Metas SMART</dt>
+                            <dd class="col-sm-9">Critérios para definir metas eficazes: Específicas (Specific), Mensuráveis (Measurable), Atingíveis (Achievable), Relevantes (Relevant) e com Prazo definido (Time-bound).</dd>
+
+                            <dt class="col-sm-3">RBAC</dt>
+                            <dd class="col-sm-9">Role-Based Access Control (Controle de Acesso Baseado em Papéis). Um método de restringir o acesso ao sistema com base nos papéis individuais dos usuários dentro de uma organização.</dd>
+                        </dl>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer mt-auto py-3">
+            <div class="container-fluid text-center">
+                <span class="text-muted">Prontuário Eletrônico Premium &copy; 2023. Desenvolvido para demonstração.</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Modal Novo/Editar Paciente -->
+    <div class="modal fade" id="patientModal" tabindex="-1" aria-labelledby="patientModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="patientModalLabel">Paciente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" id="patientTabs" role="tablist">
+                        <li class="nav-item" role="presentation"><button class="nav-link active" id="dados-pessoais-tab" data-bs-toggle="tab" data-bs-target="#dados-pessoais" type="button" role="tab" aria-controls="dados-pessoais" aria-selected="true">Dados Pessoais</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" id="contatos-tab" data-bs-toggle="tab" data-bs-target="#contatos" type="button" role="tab" aria-controls="contatos" aria-selected="false">Contatos</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico" type="button" role="tab" aria-controls="historico" aria-selected="false">Histórico Clínico</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" id="evols-tab" data-bs-toggle="tab" data-bs-target="#evols" type="button" role="tab" aria-controls="evols" aria-selected="false">Evoluções</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#patient-files" type="button" role="tab" aria-controls="patient-files" aria-selected="false">Arquivos</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" id="consentimento-tab" data-bs-toggle="tab" data-bs-target="#consentimento" type="button" role="tab" aria-controls="consentimento" aria-selected="false">Consentimento LGPD</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" id="patient-settings-tab" data-bs-toggle="tab" data-bs-target="#patient-settings" type="button" role="tab" aria-controls="patient-settings" aria-selected="false">Configurações</button></li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="dados-pessoais" role="tabpanel" aria-labelledby="dados-pessoais-tab">
+                            <form id="patient-form">
+                                <input type="hidden" id="patient-id">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="patient-name" class="form-label">Nome Completo <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" title="Nome completo do paciente. Essencial para identificação e em relatórios."></i></label>
+                                        <input type="text" id="patient-name" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="patient-cpf" class="form-label">CPF <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" title="Cadastro de Pessoa Física. Importante para identificação única e emissão de documentos."></i></label>
+                                        <input type="text" id="patient-cpf" class="form-control" pattern="\d{3}\.?\d{3}\.?\d{3}-?\d{2}" placeholder="XXX.XXX.XXX-XX">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="patient-dob" class="form-label">Data de Nascimento <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" title="Data de nascimento do paciente. Usada para calcular idade e para fins demográficos."></i></label>
+                                        <input type="date" id="patient-dob" class="form-control">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="patient-sex" class="form-label">Sexo</label>
+                                        <select id="patient-sex" class="form-select">
+                                            <option value="">Selecione</option>
+                                            <option value="Masculino">Masculino</option>
+                                            <option value="Feminino">Feminino</option>
+                                            <option value="Outro">Outro</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="patient-status" class="form-label">Status <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" title="Status do paciente no sistema: Ativo, Inativo ou Arquivado. Afeta a visibilidade em listagens."></i></label>
+                                        <select id="patient-status" class="form-select">
+                                            <option value="Ativo">Ativo</option>
+                                            <option value="Inativo">Inativo</option>
+                                            <option value="Arquivado">Arquivado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <label for="patient-tags" class="form-label">Tags <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" title="Palavras-chave para categorizar o paciente, como 'diabético', 'hipertenso', 'pós-cirúrgico'."></i></label>
+                                        <input type="text" id="patient-tags" class="form-control" placeholder="Ex: diabético, hipertenso (separar por vírgula)">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="patient-private-notes" class="form-label">Observações Privadas <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" title="Notas confidenciais sobre o paciente, visíveis apenas para profissionais com permissão adequada."></i></label>
+                                    <textarea id="patient-private-notes" class="form-control" rows="3"></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="contatos" role="tabpanel" aria-labelledby="contatos-tab">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="patient-phone" class="form-label">Telefone Principal</label>
+                                    <input type="tel" id="patient-phone" class="form-control" placeholder="(XX) XXXXX-XXXX">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="patient-email" class="form-label">Email</label>
+                                    <input type="email" id="patient-email" class="form-control" placeholder="email@exemplo.com">
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label for="patient-address" class="form-label">Endereço Completo</label>
+                                    <input type="text" id="patient-address" class="form-control" placeholder="Rua, Número, Complemento, Bairro, Cidade - Estado, CEP">
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label for="patient-emergency-contact" class="form-label">Contato de Emergência</label>
+                                    <input type="text" id="patient-emergency-contact" class="form-control" placeholder="Nome do Contato, Telefone">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="historico" role="tabpanel" aria-labelledby="historico-tab">
+                            <div class="mb-3">
+                                <label for="patient-clinical-history" class="form-label">Histórico Clínico</label>
+                                <textarea id="patient-clinical-history" class="form-control" rows="5" placeholder="Doenças preexistentes, cirurgias anteriores, hospitalizações, histórico familiar relevante..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="patient-allergies" class="form-label">Alergias</label>
+                                <textarea id="patient-allergies" class="form-control" rows="3" placeholder="Alergias a medicamentos, alimentos, ambiente..."></textarea>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="evols" role="tabpanel" aria-labelledby="evols-tab">
+                            <div class="d-flex justify-content-between mb-3">
+                                <h4>Evoluções do Paciente</h4>
+                                <button class="btn btn-primary" id="new-evolution-btn"><i class="fas fa-plus-circle me-2"></i>Nova Evolução</button>
+                            </div>
+                            <ul id="patient-evolutions-list" class="list-group">
+                                <!-- Evoluções serão carregadas aqui -->
+                                <li class="list-group-item text-center text-muted">Nenhuma evolução registrada para este paciente.</li>
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade" id="patient-files" role="tabpanel" aria-labelledby="files-tab">
+                            <div class="d-flex justify-content-between mb-3">
+                                <h4>Arquivos do Paciente</h4>
+                                <label for="patient-file-upload-input" class="btn btn-primary mb-0"><i class="fas fa-upload me-2"></i>Upload Arquivo</label>
+                                <input type="file" id="patient-file-upload-input" class="d-none" multiple>
+                            </div>
+                            <div id="patient-file-drag-drop-area" class="drag-drop-area">
+                                <p><i class="fas fa-cloud-upload-alt fa-2x text-primary"></i></p>
+                                <p>Arraste e solte arquivos aqui.</p>
+                            </div>
+                            <input type="text" id="patient-file-search" class="form-control mb-3" placeholder="Buscar arquivos...">
+                            <ul id="patient-files-list" class="list-group">
+                                <!-- Arquivos do paciente serão carregados aqui -->
+                                <li class="list-group-item text-center text-muted">Nenhum arquivo enviado para este paciente.</li>
+                            </ul>
+                        </div>
+                        <div class="tab-pane fade" id="consentimento" role="tabpanel" aria-labelledby="consentimento-tab">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="patient-lgpd-consent">
+                                    <label class="form-check-label" for="patient-lgpd-consent">
+                                        O paciente consente com o tratamento de seus dados pessoais para fins de atendimento clínico, conforme a LGPD. <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" title="Confirmação do consentimento do paciente para o uso de seus dados. Essencial para conformidade com a LGPD."></i>
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="lgpd-consent-details" style="display:none;">
+                                <p class="mb-1"><strong>Data do Consentimento:</strong> <span id="patient-lgpd-timestamp"></span></p>
+                                <p class="mb-1"><strong>IP Simulada:</strong> <span id="patient-lgpd-ip"></span></p>
+                            </div>
+                            <div class="alert alert-warning mt-3" role="alert" id="lgpd-alert-no-consent" style="display:none;">
+                                <i class="fas fa-exclamation-triangle"></i> **ATENÇÃO:** Este paciente não possui consentimento LGPD registrado.
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="patient-settings" role="tabpanel" aria-labelledby="patient-settings-tab">
+                            <h5 class="mb-3">Exportar Prontuário Completo</h5>
+                            <button class="btn btn-outline-primary mb-2" id="export-patient-json-btn"><i class="fas fa-download me-2"></i>Exportar Dados (JSON)</button>
+                            <button class="btn btn-outline-primary mb-2" id="export-patient-pdf-btn"><i class="fas fa-file-pdf me-2"></i>Exportar Prontuário (PDF)</button>
+                            <button class="btn btn-outline-primary mb-2" id="export-patient-zip-btn"><i class="fas fa-file-archive me-2"></i>Exportar Pacote de Dados (ZIP)</button>
+                            <hr>
+                            <h5 class="mb-3">Remoção de Dados</h5>
+                            <button class="btn btn-danger" id="request-patient-anonymization-mock-btn"><i class="fas fa-user-secret me-2"></i>Solicitar Anonimização (Mock)</button>
+                            <p class="small text-muted mt-2"><i class="fas fa-info-circle"></i> Esta é uma função simulada. Em um sistema real, acionaria um processo de exclusão/anonimização permanente de dados. </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" id="save-patient-btn">Salvar Paciente</button>
+                    <button type="button" class="btn btn-danger" id="delete-patient-btn" style="display: none;">Excluir Paciente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Novo/Editar Evolução -->
+    <div class="modal fade" id="evolutionModal" tabindex="-1" aria-labelledby="evolutionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="evolutionModalLabel">Nova Evolução para <span id="evolution-patient-name-title"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="evolution-id">
+                    <input type="hidden" id="evolution-patient-id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="evolution-date" class="form-label">Data e Hora</label>
+                            <input type="datetime-local" id="evolution-date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="evolution-professional" class="form-label">Profissional</label>
+                            <select id="evolution-professional" class="form-select" required></select>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="evolution-type" class="form-label">Tipo de Atendimento</label>
+                            <input type="text" id="evolution-type" class="form-control" placeholder="Ex: Consulta, Retorno, Teleconsulta">
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="evolution-template" class="form-label">Template de Evolução</label>
+                            <select id="evolution-template" class="form-select">
+                                <option value="">(Nenhum template)</option>
+                                <!-- Templates serão carregados aqui -->
+                            </select>
+                            <small class="text-muted">Selecione um template para preencher o conteúdo da evolução.</small>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="evolution-anamnese" class="form-label">Anamnese / Observações</label>
+                            <div id="evolution-anamnese-editor" class="quill-container"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="evolution-vitals" class="form-label">Sinais Vitais / Exames (Estruturado)</label>
+                            <textarea id="evolution-vitals" class="form-control" rows="4" placeholder="Ex: PA: 120/80 mmHg, FC: 70 bpm, Temperatura: 36.5°C"></textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="evolution-therapeutic-plan" class="form-label">Plano Terapêutico / Conduta</label>
+                            <textarea id="evolution-therapeutic-plan" class="form-control" rows="4" placeholder="Ex: Manter medicação, solicitar exames X, agendar retorno em 30 dias."></textarea>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="evolution-smart-goals" class="form-label">Metas SMART <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" title="Defina metas Específicas, Mensuráveis, Atingíveis, Relevantes e com Prazo definido."></i></label>
+                            <textarea id="evolution-smart-goals" class="form-control" rows="3" placeholder="Ex: Paciente irá reduzir peso em 5kg em 3 meses (realizando dieta e exercícios 3x/sem)."></textarea>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="evolution-prescribed-activities" class="form-label">Atividades Prescritas</label>
+                            <textarea id="evolution-prescribed-activities" class="form-control" rows="3" placeholder="Ex: Caminhada diária de 30min, 2L de água/dia, evitar alimentos processados."></textarea>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label for="evolution-signature-area" class="form-label">Assinatura Digital (Mock)</label>
+                            <div id="evolution-signature-area" class="signature-area">
+                                <span id="evolution-signature-text">Clique para assinar</span>
+                                <img id="evolution-signature-img" class="signature-img" src="" style="display:none;">
+                            </div>
+                            <input type="hidden" id="evolution-signature-data">
+                            <small class="text-muted"><i class="fas fa-info-circle"></i> Esta é uma assinatura visual simulada. Para validade jurídica, integre com DocuSign, HelloSign ou ICP-Brasil.</small>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4">Anexos da Evolução</h5>
+                    <label for="evolution-file-upload-input" class="btn btn-outline-secondary mb-2"><i class="fas fa-paperclip me-2"></i>Anexar Arquivo</label>
+                    <input type="file" id="evolution-file-upload-input" class="d-none" multiple>
+                    <ul id="evolution-attachments-list" class="list-group mb-3">
+                        <li class="list-group-item text-center text-muted">Nenhum anexo.</li>
+                    </ul>
+
+                    <h5 class="mt-4">Histórico de Versões</h5>
+                    <div id="evolution-version-history" style="max-height: 200px; overflow-y: auto;">
+                        <ul class="list-group" id="evolution-versions-list">
+                            <li class="list-group-item text-center text-muted">Nenhuma versão anterior.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" id="save-evolution-btn">Salvar Evolução</button>
+                    <button type="button" class="btn btn-danger" id="delete-evolution-btn" style="display: none;">Excluir Evolução</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ver Evolução (somente leitura com histórico) -->
+    <div class="modal fade" id="viewEvolutionModal" tabindex="-1" aria-labelledby="viewEvolutionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="viewEvolutionModalLabel">Visualizar Evolução</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>Paciente:</strong> <span id="view-evolution-patient-name"></span><br>
+                        <strong>Data:</strong> <span id="view-evolution-date"></span><br>
+                        <strong>Profissional:</strong> <span id="view-evolution-professional"></span><br>
+                        <strong>Tipo:</strong> <span id="view-evolution-type"></span>
+                    </div>
+                    <hr>
+                    <h6 class="mb-2">Anamnese / Observações:</h6>
+                    <div id="view-evolution-anamnese" class="ql-editor p-0 border-0"></div>
+                    <h6 class="mt-3 mb-2">Sinais Vitais / Exames:</h6>
+                    <p id="view-evolution-vitals"></p>
+                    <h6 class="mt-3 mb-2">Plano Terapêutico / Conduta:</h6>
+                    <p id="view-evolution-therapeutic-plan"></p>
+                    <h6 class="mt-3 mb-2">Metas SMART:</h6>
+                    <p id="view-evolution-smart-goals"></p>
+                    <h6 class="mt-3 mb-2">Atividades Prescritas:</h6>
+                    <p id="view-evolution-prescribed-activities"></p>
+                    <h6 class="mt-3 mb-2">Assinatura:</h6>
+                    <div class="signature-area border-0 bg-transparent" style="min-height: auto;">
+                        <img id="view-evolution-signature-img" class="signature-img" src="" style="display:none;">
+                        <span id="view-evolution-signature-text"></span>
+                    </div>
+
+                    <h6 class="mt-4 mb-2">Anexos:</h6>
+                    <ul id="view-evolution-attachments-list" class="list-group mb-3"></ul>
+
+                    <h6 class="mt-4 mb-2">Histórico de Versões:</h6>
+                    <select id="view-evolution-version-selector" class="form-select mb-3"></select>
+                    <div id="evolution-version-diff" class="border p-3 rounded bg-light" style="max-height: 250px; overflow-y: auto;">
+                        <!-- Diff content will be loaded here -->
+                        Selecione uma versão para ver os detalhes.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" id="edit-evolution-from-view-btn"><i class="fas fa-edit me-2"></i>Editar</button>
+                    <button type="button" class="btn btn-outline-primary" id="export-evolution-pdf-btn"><i class="fas fa-file-pdf me-2"></i>Gerar PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Novo/Editar Agendamento -->
+    <div class="modal fade" id="appointmentModal" tabindex="-1" aria-labelledby="appointmentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="appointmentModalLabel">Novo Agendamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="appointment-form">
+                        <input type="hidden" id="appointment-id">
+                        <div class="mb-3">
+                            <label for="appointment-patient" class="form-label">Paciente</label>
+                            <select id="appointment-patient" class="form-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="appointment-professional" class="form-label">Profissional</label>
+                            <select id="appointment-professional" class="form-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="appointment-date" class="form-label">Data</label>
+                            <input type="date" id="appointment-date" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="appointment-time" class="form-label">Hora</label>
+                            <input type="time" id="appointment-time" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="appointment-duration" class="form-label">Duração (minutos)</label>
+                            <input type="number" id="appointment-duration" class="form-control" value="30" min="15" step="15" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="appointment-room" class="form-label">Sala/Recurso</label>
+                            <input type="text" id="appointment-room" class="form-control" placeholder="Sala 1, Consultório B">
+                        </div>
+                        <div class="mb-3">
+                            <label for="appointment-status" class="form-label">Status</label>
+                            <select id="appointment-status" class="form-select" required>
+                                <option value="agendado">Agendado</option>
+                                <option value="confirmado">Confirmado</option>
+                                <option value="presente">Presente</option>
+                                <option value="atrasou">Atrasou</option>
+                                <option value="finalizado">Finalizado</option>
+                                <option value="faltou">Faltou</option>
+                                <option value="cancelado">Cancelado</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="appointment-notes" class="form-label">Notas</label>
+                            <textarea id="appointment-notes" class="form-control" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" id="save-appointment-btn">Salvar Agendamento</button>
+                    <button type="button" class="btn btn-danger" id="delete-appointment-btn" style="display: none;">Excluir Agendamento</button>
+                    <button type="button" class="btn btn-outline-info" id="mock-send-reminder-btn"><i class="fas fa-bell me-2"></i>Enviar Lembrete (Mock)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Visualizar Arquivo -->
+    <div class="modal fade" id="viewFileModal" tabindex="-1" aria-labelledby="viewFileModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="viewFileModalLabel">Visualizar Arquivo: <span id="view-file-name"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="file-preview-area">
+                        <!-- Conteúdo de pré-visualização (imagem, iframe para PDF) -->
+                        <img id="file-preview-img" class="file-preview" alt="Pré-visualização de imagem" style="display:none;">
+                        <iframe id="file-preview-pdf" class="file-preview" style="width:100%; height:500px; display:none;"></iframe>
+                        <p id="file-preview-text" class="text-muted" style="display:none;">Conteúdo de texto...</p>
+                        <p id="file-preview-unsupported" style="display:none;"><i class="fas fa-exclamation-triangle me-2"></i>Pré-visualização não disponível para este tipo de arquivo.</p>
+                    </div>
+                    <p class="mt-3">
+                        <strong>Paciente:</strong> <span id="view-file-patient-name"></span><br>
+                        <strong>Pasta:</strong> <span id="view-file-folder"></span><br>
+                        <strong>Upload:</strong> <span id="view-file-date"></span> por <span id="view-file-uploader"></span>
+                    </p>
+                    <button class="btn btn-outline-primary" id="download-file-btn"><i class="fas fa-download me-2"></i>Baixar Arquivo</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-danger" id="delete-file-btn"><i class="fas fa-trash me-2"></i>Excluir Arquivo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Novo/Editar Membro da Equipe -->
+    <div class="modal fade" id="teamMemberModal" tabindex="-1" aria-labelledby="teamMemberModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="teamMemberModalLabel">Adicionar Membro da Equipe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="team-member-form">
+                        <input type="hidden" id="team-member-id">
+                        <div class="mb-3">
+                            <label for="team-member-name" class="form-label">Nome</label>
+                            <input type="text" id="team-member-name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="team-member-email" class="form-label">Email</label>
+                            <input type="email" id="team-member-email" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="team-member-password" class="form-label">Senha (deixe em branco para não alterar)</label>
+                            <input type="password" id="team-member-password" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label for="team-member-role" class="form-label">Papel</label>
+                            <select id="team-member-role" class="form-select" required>
+                                <!-- Roles will be populated by JS -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Permissões Específicas</label>
+                            <div id="team-member-permissions-checkboxes">
+                                <!-- Checkboxes para permissões por módulo -->
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Configuração 2FA (Mock)</label>
+                            <div id="2fa-setup-area" class="card p-3">
+                                <p class="mb-2">Status: <span id="2fa-status-text" class="badge bg-secondary">Inativo</span></p>
+                                <div id="2fa-qr-code-display" class="text-center mb-3" style="display:none;">
+                                    <img id="2fa-qr-img" src="" alt="QR Code 2FA" class="img-fluid" style="max-width: 150px;">
+                                    <p class="mt-2 small">Chave Secreta: <strong id="2fa-secret-key"></strong></p>
+                                    <p class="small text-muted">Use um app autenticador (Google Authenticator) para escanear ou digitar a chave.</p>
+                                    <p class="text-warning small"><i class="fas fa-exclamation-triangle"></i> **MOCK:** Este 2FA é apenas para demonstração. Não oferece segurança real.</p>
+                                </div>
+                                <button type="button" class="btn btn-outline-info w-100" id="activate-2fa-mock-btn"><i class="fas fa-shield-alt me-2"></i>Ativar 2FA (Mock)</button>
+                                <button type="button" class="btn btn-outline-danger w-100 mt-2" id="deactivate-2fa-mock-btn" style="display:none;"><i class="fas fa-times-circle me-2"></i>Desativar 2FA (Mock)</button>
+                            </div>
+                            <small class="text-info mt-2"><i class="fas fa-info-circle"></i> Para 2FA real, integre com serviços como Twilio Authy ou TOTP server-side.</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" id="save-team-member-btn">Salvar Membro</button>
+                    <button type="button" class="btn btn-danger" id="delete-team-member-btn" style="display: none;">Excluir Membro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Verificação 2FA (Mock) -->
+    <div class="modal fade" id="twoFAModal" tabindex="-1" aria-labelledby="twoFAModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="twoFAModalLabel">Verificação 2FA (Mock)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Insira o código gerado pelo seu aplicativo autenticador (Mock).</p>
+                    <input type="text" id="2fa-code-input" class="form-control mb-3" placeholder="Código 2FA">
+                    <p class="small text-muted text-warning"><i class="fas fa-exclamation-triangle"></i> **MOCK:** Qualquer código de 6 dígitos será aceito para demonstração.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="verify-2fa-mock-btn">Verificar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Novo/Editar Template de Documento -->
+    <div class="modal fade" id="documentTemplateModal" tabindex="-1" aria-labelledby="documentTemplateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="documentTemplateModalLabel">Novo Template de Documento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="document-template-form">
+                        <input type="hidden" id="doc-template-id">
+                        <div class="mb-3">
+                            <label for="doc-template-name" class="form-label">Nome do Template</label>
+                            <input type="text" id="doc-template-name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="doc-template-type" class="form-label">Tipo de Documento</label>
+                            <select id="doc-template-type" class="form-select">
+                                <option value="prescription">Prescrição</option>
+                                <option value="exam_request">Solicitação de Exame</option>
+                                <option value="medical_certificate">Atestado Médico</option>
+                                <option value="medical_report">Laudo Médico</option>
+                                <option value="evolution_template">Template de Evolução</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="doc-template-specialty" class="form-label">Especialidade (Opcional)</label>
+                            <input type="text" id="doc-template-specialty" class="form-control" placeholder="Ex: Nutrição, Psicologia">
+                        </div>
+                        <div class="mb-3">
+                            <label for="doc-template-content" class="form-label">Conteúdo do Template</label>
+                            <div id="doc-template-content-editor" class="quill-container"></div>
+                            <small class="text-muted mt-2">Use placeholders como <code>{{patient.name}}</code>, <code>{{professional.name}}</code>, <code>{{org.name}}</code>, <code>{{currentDate}}</code>.</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" id="save-doc-template-btn">Salvar Template</button>
+                    <button type="button" class="btn btn-danger" id="delete-doc-template-btn" style="display: none;">Excluir Template</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gerenciar Organizações -->
+    <div class="modal fade" id="manageOrgsModal" tabindex="-1" aria-labelledby="manageOrgsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="manageOrgsModalLabel">Gerenciar Organizações</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="list-group mb-3" id="org-manage-list">
+                        <!-- Organizações serão listadas aqui -->
+                    </ul>
+                    <button class="btn btn-primary w-100 mb-2" id="create-new-org-modal-btn"><i class="fas fa-plus-circle me-2"></i>Criar Nova Organização</button>
+                    <div id="new-org-form-area" style="display:none;">
+                        <input type="text" id="new-org-name-input" class="form-control mb-2" placeholder="Nome da Nova Organização">
+                        <input type="email" id="new-org-admin-email" class="form-control mb-2" placeholder="Email do Admin (Será o owner)">
+                        <input type="password" id="new-org-admin-password" class="form-control mb-2" placeholder="Senha do Admin">
+                        <button class="btn btn-success w-100" id="save-new-org-btn">Salvar Nova Organização</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <!-- Toasts will be appended here -->
+    </div>
+
+    <!-- Online Status Indicator -->
+    <div id="online-status-indicator" class="online-status"></div>
+
+    <script>
+        dayjs.extend(dayjs_plugin_localizedFormat);
+        dayjs.extend(dayjs_plugin_isBetween);
+        dayjs.extend(dayjs_plugin_utc);
+        dayjs.extend(dayjs_plugin_timezone);
+
+        dayjs.tz.setDefault(dayjs.tz.guess()); // Set default timezone to local
+
+        // --- GLOBAL APP STATE & UTILITIES ---
+        const APP_NAME = "ProntuarioPremium";
+        let DB_ aqui
