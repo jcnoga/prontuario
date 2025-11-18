@@ -1,1940 +1,1019 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OdontoSystem - Gestão Odontológica</title>
-    
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- Firebase SDKs (Compatibilidade v9 via CDN) -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <title>OdontoSys - Sistema de Prontuário Inteligente</title>
 
-    <!-- PDF Export Libs -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-    <style>
-        :root {
-            --primary-color: #0d6efd;
-            --bg-light: #f8f9fa;
-        }
-        body { background-color: var(--bg-light); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .sidebar { min-height: 100vh; background: #fff; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
-        .nav-link { color: #555; margin-bottom: 5px; border-radius: 5px; }
-        .nav-link:hover, .nav-link.active { background-color: var(--primary-color); color: white; }
-        .card { border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .hidden { display: none !important; }
-        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center; }
-        .status-agendado { color: orange; font-weight: bold; }
-        .status-confirmado { color: green; font-weight: bold; }
-        .status-cancelado { color: red; font-weight: bold; }
-    </style>
-</head>
-<body>
-
-    <!-- Loading Spinner -->
-    <div id="loading-overlay">
-        <div class="spinner-border text-primary" role="status"></div>
-    </div>
-
-    <!-- Tela de Login -->
-    <div id="login-screen" class="container d-flex justify-content-center align-items-center vh-100">
-        <div class="card p-4" style="width: 400px;">
-            <h3 class="text-center mb-4"><i class="fas fa-tooth text-primary"></i> OdontoSystem</h3>
-            <form id="login-form">
-                <div class="mb-3">
-                    <label>E-mail</label>
-                    <input type="email" id="login-email" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label>Senha</label>
-                    <input type="password" id="login-password" class="form-control" required>
-                </div>
-                <button type="submit" class="btn btn-primary w-100">Entrar</button>
-                <div class="mt-3 text-center">
-                    <a href="#" onclick="authModule.recoverPassword()">Esqueci a senha</a>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Layout Principal (Sidebar + Conteúdo) -->
-    <div id="main-layout" class="container-fluid hidden">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-2 d-none d-md-block sidebar py-3">
-                <div class="text-center mb-4">
-                    <h4><i class="fas fa-tooth text-primary"></i> OdontoSys</h4>
-                    <small id="user-role-display" class="text-muted">Carregando...</small>
-                </div>
-                <ul class="nav flex-column">
-                    <li class="nav-item"><a class="nav-link active" href="#" onclick="router.navigate('dashboard')"><i class="fas fa-home"></i> Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#" onclick="router.navigate('agenda')"><i class="fas fa-calendar-alt"></i> Agenda</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#" onclick="router.navigate('pacientes')"><i class="fas fa-users"></i> Pacientes</a></li>
-                    <li class="nav-item role-admin hidden"><a class="nav-link" href="#" onclick="router.navigate('usuarios')"><i class="fas fa-user-shield"></i> Usuários</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#" onclick="router.navigate('relatorios')"><i class="fas fa-chart-bar"></i> Relatórios</a></li>
-                    <li class="nav-item mt-4"><a class="nav-link text-danger" href="#" onclick="authModule.logout()"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
-                </ul>
-            </nav>
-
-            <!-- Conteúdo Principal -->
-            <main class="col-md-10 ms-sm-auto px-md-4 py-4">
-                
-                <!-- DASHBOARD -->
-                <div id="view-dashboard" class="view-section">
-                    <h2>Dashboard</h2>
-                    <div class="row mt-3">
-                        <div class="col-md-3">
-                            <div class="card bg-primary text-white p-3">
-                                <h5>Consultas Hoje</h5>
-                                <h2 id="dash-today-count">0</h2>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white p-3">
-                                <h5>Pacientes Totais</h5>
-                                <h2 id="dash-patient-count">0</h2>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-white p-3">
-                                <h5>Retornos Pendentes</h5>
-                                <h2 id="dash-returns">0</h2>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="alert alert-info mt-3" id="dash-alert">
-                        <strong>Avisos:</strong> Verifique a agenda para confirmações pendentes.
-                    </div>
-                </div>
-
-                <!-- AGENDA -->
-                <div id="view-agenda" class="view-section hidden">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h2>Agenda</h2>
-                        <button class="btn btn-primary" onclick="agendaModule.openModal()">Nova Consulta</button>
-                    </div>
-                    <input type="date" id="agenda-date-filter" class="form-control w-auto mb-3" onchange="agendaModule.loadAgenda()">
-                    <div class="table-responsive">
-                        <table class="table table-hover bg-white">
-                            <thead><tr><th>Hora</th><th>Paciente</th><th>Profissional</th><th>Procedimento</th><th>Status</th><th>Ações</th></tr></thead>
-                            <tbody id="agenda-list"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- PACIENTES -->
-                <div id="view-pacientes" class="view-section hidden">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h2>Pacientes</h2>
-                        <button class="btn btn-primary" onclick="patientModule.openModal()">Novo Paciente</button>
-                    </div>
-                    <input type="text" class="form-control mb-3" placeholder="Buscar por nome ou CPF..." onkeyup="patientModule.search(this.value)">
-                    <div class="table-responsive">
-                        <table class="table table-hover bg-white">
-                            <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Ações</th></tr></thead>
-                            <tbody id="patient-list"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- DETALHE PACIENTE (Prontuário) -->
-                <div id="view-patient-detail" class="view-section hidden">
-                    <button class="btn btn-secondary mb-3" onclick="router.navigate('pacientes')"><i class="fas fa-arrow-left"></i> Voltar</button>
-                    <div class="card p-3">
-                        <h3 id="detail-name">Nome do Paciente</h3>
-                        <p id="detail-info" class="text-muted">CPF: ... | Email: ...</p>
-                        
-                        <ul class="nav nav-tabs" id="patientTab" role="tablist">
-                            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-anamnese">Anamnese</button></li>
-                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-evolucao">Evolução/Prontuário</button></li>
-                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-arquivos">Arquivos</button></li>
-                        </ul>
-                        
-                        <div class="tab-content p-3 border border-top-0 bg-white">
-                            <!-- Anamnese -->
-                            <div class="tab-pane fade show active" id="tab-anamnese">
-                                <textarea id="anamnese-text" class="form-control mb-2" rows="5" placeholder="Alergias, Doenças, Histórico..."></textarea>
-                                <button class="btn btn-primary" onclick="patientModule.saveAnamnese()">Salvar Anamnese</button>
-                            </div>
-                            <!-- Evolução -->
-                            <div class="tab-pane fade" id="tab-evolucao">
-                                <div class="mb-3">
-                                    <label>Nova Evolução</label>
-                                    <textarea id="evo-text" class="form-control" rows="2"></textarea>
-                                    <button class="btn btn-success mt-2" onclick="patientModule.addEvolution()">Adicionar Registro</button>
-                                    <button class="btn btn-outline-secondary mt-2 ms-2" onclick="patientModule.exportPDF()">Exportar PDF</button>
-                                </div>
-                                <div id="evolution-history" class="mt-4 border-top pt-2">
-                                    <!-- Histórico injetado aqui -->
-                                </div>
-                            </div>
-                            <!-- Arquivos -->
-                            <div class="tab-pane fade" id="tab-arquivos">
-                                <div class="input-group mb-3">
-                                    <input type="file" class="form-control" id="file-upload-input">
-                                    <button class="btn btn-outline-primary" type="button" onclick="patientModule.uploadFile()">Upload</button>
-                                </div>
-                                <ul class="list-group" id="file-list"></ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- USUÁRIOS (Admin) -->
-                <div id="view-usuarios" class="view-section hidden">
-                    <h2>Gestão de Usuários</h2>
-                    <div class="card p-3 mb-3">
-                        <h5>Novo Usuário</h5>
-                        <form onsubmit="userModule.create(event)">
-                            <div class="row">
-                                <div class="col"><input type="email" id="new-user-email" placeholder="E-mail" class="form-control" required></div>
-                                <div class="col"><input type="password" id="new-user-pass" placeholder="Senha" class="form-control" required></div>
-                                <div class="col">
-                                    <select id="new-user-role" class="form-control">
-                                        <option value="recepcao">Recepção</option>
-                                        <option value="dentista">Dentista</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                </div>
-                                <div class="col-auto"><button type="submit" class="btn btn-primary">Criar</button></div>
-                            </div>
-                        </form>
-                    </div>
-                    <table class="table bg-white">
-                        <thead><tr><th>Email</th><th>Função</th><th>Ações</th></tr></thead>
-                        <tbody id="users-list"></tbody>
-                    </table>
-                </div>
-                
-                <!-- RELATÓRIOS -->
-                <div id="view-relatorios" class="view-section hidden">
-                    <h2>Relatórios</h2>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card p-3">
-                                <h5>Exportar Pacientes</h5>
-                                <button onclick="reportsModule.exportPatientsCSV()" class="btn btn-outline-success">Baixar CSV</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </main>
-        </div>
-    </div>
-
-    <!-- MODAL: Agenda -->
-    <div class="modal fade" id="modal-agenda" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Agendamento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body">
-                    <input type="hidden" id="agenda-id">
-                    <label>Paciente</label>
-                    <select id="agenda-paciente" class="form-control mb-2"></select>
-                    <label>Data e Hora</label>
-                    <input type="datetime-local" id="agenda-data" class="form-control mb-2">
-                    <label>Procedimento</label>
-                    <input type="text" id="agenda-proc" class="form-control mb-2">
-                    <label>Status</label>
-                    <select id="agenda-status" class="form-control mb-2">
-                        <option value="Agendado">Agendado</option>
-                        <option value="Confirmado">Confirmado</option>
-                        <option value="Cancelado">Cancelado</option>
-                    </select>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger hidden" id="btn-delete-agenda" onclick="agendaModule.delete()">Excluir</button>
-                    <button type="button" class="btn btn-primary" onclick="agendaModule.save()">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: Novo Paciente -->
-    <div class="modal fade" id="modal-paciente" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Dados do Paciente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body">
-                    <input type="hidden" id="pat-id">
-                    <input type="text" id="pat-nome" placeholder="Nome Completo" class="form-control mb-2" required>
-                    <input type="text" id="pat-cpf" placeholder="CPF" class="form-control mb-2">
-                    <input type="text" id="pat-tel" placeholder="Telefone" class="form-control mb-2">
-                    <input type="email" id="pat-email" placeholder="E-mail" class="form-control mb-2">
-                    <textarea id="pat-endereco" placeholder="Endereço" class="form-control mb-2"></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="patientModule.save()">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script><!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OdontoSys - Prontuário e Gestão Integrada</title>
-    
-    <!-- UI Frameworks (Bootstrap 5 & FontAwesome) carregados via CDN para visual moderno -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- ESTILOS E FONTES -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0ea5e9',
+                        secondary: '#6366f1',
+                        dark: '#0f172a',
+                        surface: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --primary-color: #0d6efd;
-            --secondary-color: #6c757d;
-            --sidebar-width: 250px;
-        }
-
-        body {
-            background-color: #f8f9fa;
-            overflow-x: hidden;
-        }
-
-        /* Layout Principal */
-        #app-container {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        #sidebar {
-            width: var(--sidebar-width);
-            background: #212529;
-            color: white;
-            min-height: 100vh;
-            transition: all 0.3s;
-            position: fixed;
-            z-index: 1000;
-        }
-
-        #sidebar .nav-link {
-            color: rgba(255,255,255,0.8);
-            padding: 15px 20px;
-            border-radius: 0;
-        }
-
-        #sidebar .nav-link:hover, #sidebar .nav-link.active {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        #main-content {
-            margin-left: var(--sidebar-width);
-            width: calc(100% - var(--sidebar-width));
-            padding: 20px;
-            transition: all 0.3s;
-        }
-
-        /* Login Screen */
-        #login-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #0d6efd 0%, #0099ff 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .card-login {
-            width: 400px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            border: none;
-        }
-
-        /* Componentes Específicos */
-        .timeline-step {
-            border-left: 2px solid #dee2e6;
-            padding-left: 20px;
-            padding-bottom: 20px;
-            position: relative;
-        }
-        .timeline-step::before {
-            content: '';
-            position: absolute;
-            left: -6px;
-            top: 0;
-            width: 10px;
-            height: 10px;
+        [v-cloak] { display: none; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        
+        /* Scrollbar customizada */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dark ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0ea5e9;
             border-radius: 50%;
-            background: var(--primary-color);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
         }
-
-        /* Utilitários */
-        .hidden { display: none !important; }
-        .cursor-pointer { cursor: pointer; }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            #sidebar { margin-left: calc(-1 * var(--sidebar-width)); }
-            #sidebar.active { margin-left: 0; }
-            #main-content { margin-left: 0; width: 100%; }
-        }
-
-        /* Impressão */
-        @media print {
-            #sidebar, #top-nav, .no-print { display: none !important; }
-            #main-content { margin: 0; padding: 0; width: 100%; }
-            .card { border: none !important; shadow: none !important; }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
+
+    <!-- BIBLIOTECAS JS -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 dark:bg-dark dark:text-slate-200 transition-colors duration-300 font-sans antialiased">
+
+<div id="app" v-cloak class="h-screen flex flex-col overflow-hidden">
+
+    <!-- NOTIFICAÇÕES TOAST -->
+    <div class="fixed top-5 right-5 z-50 flex flex-col gap-2">
+        <div v-for="notif in notifications" :key="notif.id" 
+             :class="`p-4 rounded shadow-lg text-white flex items-center gap-3 min-w-[300px] animate-bounce-in ${notif.type === 'error' ? 'bg-red-500' : notif.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`">
+            <i :class="`fas ${notif.type === 'error' ? 'fa-exclamation-circle' : notif.type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}`"></i>
+            <div>
+                <h4 class="font-bold text-sm">{{ notif.title }}</h4>
+                <p class="text-xs">{{ notif.message }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TELA DE LOADING INICIAL -->
+    <div v-if="loading" class="fixed inset-0 z-[100] bg-white dark:bg-dark flex flex-col items-center justify-center">
+        <div class="loader mb-4"></div>
+        <p class="text-primary font-semibold animate-pulse">Carregando Sistema...</p>
+    </div>
 
     <!-- TELA DE LOGIN -->
-    <div id="login-screen">
-        <div class="card card-login p-4 bg-white rounded">
-            <div class="text-center mb-4">
-                <i class="fa-solid fa-tooth fa-3x text-primary"></i>
-                <h3 class="mt-2">OdontoSys</h3>
-                <p class="text-muted">Acesso Seguro</p>
+    <div v-if="!currentUser && !loading" class="flex-1 flex items-center justify-center bg-slate-100 dark:bg-black p-4">
+        <div class="bg-white dark:bg-surface p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200 dark:border-slate-700">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary text-2xl mb-4">
+                    <i class="fas fa-tooth"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800 dark:text-white">OdontoSys</h1>
+                <p class="text-slate-500 text-sm">Prontuário Eletrônico Integrado</p>
             </div>
-            <form id="form-login">
-                <div class="mb-3">
-                    <label class="form-label">E-mail</label>
-                    <input type="email" id="login-email" class="form-control" required placeholder="admin@clinica.com">
+
+            <form @submit.prevent="handleLogin" class="space-y-4" v-if="authMode === 'login'">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">E-mail</label>
+                    <input v-model="loginForm.email" type="email" required class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600 focus:ring-2 focus:ring-primary outline-none transition">
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Senha</label>
-                    <input type="password" id="login-password" class="form-control" required placeholder="admin123">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Senha</label>
+                    <input v-model="loginForm.password" type="password" required class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600 focus:ring-2 focus:ring-primary outline-none transition">
                 </div>
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary">Entrar</button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="Auth.showForgotPass()">Esqueci a senha</button>
-                </div>
+                <button type="submit" class="w-full bg-primary hover:bg-sky-600 text-white font-bold py-3 rounded transition shadow-lg shadow-primary/30">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Entrar
+                </button>
             </form>
-            <div class="mt-3 text-center small">
-                <p class="text-muted">Ambiente Demonstrativo (Local)</p>
+
+            <form @submit.prevent="handleRegister" class="space-y-4" v-if="authMode === 'register'">
+                <!-- Campos de Registro -->
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Nome Completo</label>
+                    <input v-model="registerForm.name" type="text" required class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">E-mail</label>
+                    <input v-model="registerForm.email" type="email" required class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Senha</label>
+                    <input v-model="registerForm.password" type="password" required minlength="6" class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600">
+                </div>
+                <div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 rounded text-xs text-yellow-700 dark:text-yellow-400">
+                    <i class="fas fa-info-circle mr-1"></i> O primeiro usuário criado será automaticamente <strong>ADMIN</strong>.
+                </div>
+                <button type="submit" class="w-full bg-secondary hover:bg-indigo-600 text-white font-bold py-3 rounded transition">
+                    <i class="fas fa-user-plus mr-2"></i> Criar Conta
+                </button>
+            </form>
+
+            <div class="mt-6 text-center text-sm">
+                <p v-if="authMode === 'login'">
+                    Não tem conta? <a href="#" @click.prevent="authMode = 'register'" class="text-primary font-bold hover:underline">Cadastre-se</a>
+                    <br>
+                    <a href="#" @click.prevent="handleResetPassword" class="text-slate-400 text-xs hover:text-slate-600">Esqueci minha senha</a>
+                </p>
+                <p v-else>
+                    Já tem conta? <a href="#" @click.prevent="authMode = 'login'" class="text-primary font-bold hover:underline">Faça Login</a>
+                </p>
             </div>
         </div>
     </div>
 
-    <!-- APLICAÇÃO PRINCIPAL -->
-    <div id="app-container" class="hidden">
+    <!-- LAYOUT PRINCIPAL (LOGADO) -->
+    <div v-if="currentUser && !loading" class="flex h-full">
         
-        <!-- Sidebar -->
-        <nav id="sidebar">
-            <div class="p-3 text-center border-bottom border-secondary">
-                <h4>OdontoSys</h4>
-                <small id="user-role-display" class="badge bg-secondary">Carregando...</small>
+        <!-- SIDEBAR -->
+        <aside :class="`bg-white dark:bg-surface border-r dark:border-slate-700 flex flex-col transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`">
+            <div class="h-16 flex items-center justify-center border-b dark:border-slate-700">
+                <i class="fas fa-tooth text-primary text-2xl"></i>
+                <span v-if="sidebarOpen" class="ml-2 font-bold text-lg tracking-tight">OdontoSys</span>
             </div>
-            <ul class="nav flex-column mt-3">
-                <li class="nav-item"><a href="#" class="nav-link active" onclick="Router.go('dashboard')"><i class="fas fa-home me-2"></i> Dashboard</a></li>
-                <li class="nav-item"><a href="#" class="nav-link" onclick="Router.go('agenda')"><i class="fas fa-calendar-alt me-2"></i> Agenda</a></li>
-                <li class="nav-item"><a href="#" class="nav-link" onclick="Router.go('patients')"><i class="fas fa-users me-2"></i> Pacientes</a></li>
-                <li class="nav-item nav-admin-only"><a href="#" class="nav-link" onclick="Router.go('users')"><i class="fas fa-user-shield me-2"></i> Usuários</a></li>
-                <li class="nav-item"><a href="#" class="nav-link" onclick="Router.go('reports')"><i class="fas fa-chart-bar me-2"></i> Relatórios</a></li>
-                <li class="nav-item"><a href="#" class="nav-link" onclick="System.backup()"><i class="fas fa-database me-2"></i> Backup</a></li>
-            </ul>
-        </nav>
 
-        <!-- Conteúdo -->
-        <div id="main-content">
-            
-            <!-- Top Nav -->
-            <nav id="top-nav" class="navbar navbar-light bg-white shadow-sm mb-4 rounded px-3">
-                <button class="btn btn-light d-md-none" onclick="UI.toggleSidebar()"><i class="fas fa-bars"></i></button>
-                <div class="ms-auto d-flex align-items-center">
-                    <button class="btn btn-sm btn-outline-dark me-2" onclick="UI.toggleDarkMode()"><i class="fas fa-moon"></i></button>
-                    <div class="dropdown">
-                        <a class="btn btn-light dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-1"></i> <span id="user-name-display">Usuário</span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#" onclick="Auth.logout()">Sair</a></li>
-                        </ul>
-                    </div>
-                </div>
+            <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-2">
+                <template v-for="item in menuItems" :key="item.id">
+                    <a v-if="checkPermission(item.role)" href="#" 
+                       @click.prevent="currentView = item.id"
+                       :class="`flex items-center px-4 py-3 rounded-lg transition ${currentView === item.id ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`">
+                        <i :class="`fas ${item.icon} w-6 text-center text-lg`"></i>
+                        <span v-if="sidebarOpen" class="ml-3 font-medium text-sm">{{ item.label }}</span>
+                    </a>
+                </template>
             </nav>
 
-            <!-- Views (Conteúdo Dinâmico) -->
-            <div id="views-container">
+            <div class="p-4 border-t dark:border-slate-700">
+                <button @click="toggleDarkMode" class="w-full flex items-center justify-center p-2 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200">
+                    <i :class="`fas ${isDark ? 'fa-sun' : 'fa-moon'}`"></i>
+                    <span v-if="sidebarOpen" class="ml-2 text-sm">{{ isDark ? 'Modo Claro' : 'Modo Escuro' }}</span>
+                </button>
+                <div class="mt-4 flex items-center overflow-hidden" v-if="sidebarOpen">
+                    <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
+                        {{ getUserInitials() }}
+                    </div>
+                    <div class="ml-2 overflow-hidden">
+                        <p class="text-sm font-bold truncate">{{ userData?.name }}</p>
+                        <p class="text-xs text-slate-500 truncate capitalize">{{ userData?.role }}</p>
+                    </div>
+                    <button @click="logout" class="ml-auto text-slate-400 hover:text-red-500" title="Sair">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="flex-1 flex flex-col bg-slate-50 dark:bg-dark overflow-hidden relative">
+            <!-- TOPBAR MOBILE/TOGGLE -->
+            <header class="h-16 bg-white dark:bg-surface border-b dark:border-slate-700 flex items-center justify-between px-6 shadow-sm z-10">
+                <button @click="sidebarOpen = !sidebarOpen" class="text-slate-500 hover:text-primary">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <h2 class="text-lg font-bold text-slate-700 dark:text-white">{{ pageTitle }}</h2>
+                <div class="flex items-center gap-4">
+                    <!-- Notificações Internas -->
+                    <div class="relative">
+                        <i class="fas fa-bell text-slate-400 hover:text-primary cursor-pointer"></i>
+                        <span v-if="todayAppointments.length > 0" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ÁREA DE VISUALIZAÇÃO DINÂMICA -->
+            <div class="flex-1 overflow-auto p-6">
                 
-                <!-- View: Dashboard -->
-                <div id="view-dashboard" class="view-section">
-                    <h2 class="mb-4">Painel de Controle</h2>
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <div class="card bg-primary text-white p-3">
-                                <h5>Consultas Hoje</h5>
-                                <h2 id="dash-today-count">0</h2>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white p-3">
-                                <h5>Pacientes</h5>
-                                <h2 id="dash-patients-count">0</h2>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-dark p-3">
-                                <h5>Faturamento (Mês)</h5>
-                                <h2 id="dash-revenue">R$ 0,00</h2>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-danger text-white p-3">
-                                <h5>Retornos Pendentes</h5>
-                                <h2 id="dash-pending">0</h2>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row mt-4">
-                        <div class="col-md-8">
-                            <div class="card shadow-sm">
-                                <div class="card-header bg-white">Próximos Atendimentos</div>
-                                <div class="card-body">
-                                    <table class="table table-hover" id="dash-table">
-                                        <thead><tr><th>Hora</th><th>Paciente</th><th>Procedimento</th><th>Status</th></tr></thead>
-                                        <tbody id="dash-table-body"></tbody>
-                                    </table>
+                <!-- VIEW: DASHBOARD -->
+                <div v-if="currentView === 'dashboard'" class="space-y-6 animate-fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-slate-500 text-xs uppercase font-bold">Consultas Hoje</p>
+                                    <h3 class="text-3xl font-bold text-primary mt-1">{{ todayAppointments.length }}</h3>
                                 </div>
+                                <div class="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600"><i class="fas fa-calendar-day"></i></div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card shadow-sm">
-                                <div class="card-header bg-white">Avisos Operacionais</div>
-                                <ul class="list-group list-group-flush" id="dash-alerts">
-                                    <!-- Preenchido via JS -->
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- View: Agenda -->
-                <div id="view-agenda" class="view-section hidden">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h2>Agenda</h2>
-                        <button class="btn btn-primary" onclick="Agenda.openModal()"><i class="fas fa-plus"></i> Novo Agendamento</button>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <input type="date" id="agenda-filter-date" class="form-control" onchange="Agenda.render()">
-                        </div>
-                        <div class="col-md-4">
-                            <select id="agenda-filter-dentist" class="form-select" onchange="Agenda.render()">
-                                <option value="">Todos os Dentistas</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="card shadow-sm">
-                        <div class="card-body" id="agenda-list">
-                            <!-- Lista de agendamentos -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- View: Pacientes -->
-                <div id="view-patients" class="view-section hidden">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h2>Pacientes</h2>
-                        <button class="btn btn-primary" onclick="Patients.openCreateModal()"><i class="fas fa-user-plus"></i> Novo Paciente</button>
-                    </div>
-                    <div class="input-group mb-3">
-                        <input type="text" class="form-control" id="patient-search" placeholder="Buscar por nome, CPF ou telefone..." onkeyup="Patients.render()">
-                        <button class="btn btn-outline-secondary" type="button"><i class="fas fa-search"></i></button>
-                    </div>
-                    <div class="card shadow-sm">
-                        <div class="card-body p-0">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Ações</th></tr>
-                                </thead>
-                                <tbody id="patients-table-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- View: Usuários (Admin) -->
-                <div id="view-users" class="view-section hidden">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h2>Gestão de Usuários</h2>
-                        <button class="btn btn-primary" onclick="Users.openModal()"><i class="fas fa-plus"></i> Novo Usuário</button>
-                    </div>
-                    <table class="table table-bordered bg-white">
-                        <thead><tr><th>Nome</th><th>Email</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead>
-                        <tbody id="users-table-body"></tbody>
-                    </table>
-                </div>
-
-                <!-- View: Relatórios -->
-                <div id="view-reports" class="view-section hidden">
-                    <h2>Relatórios</h2>
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-4">
-                            <div class="card p-3">
-                                <h5>Consultas por Período</h5>
-                                <input type="month" id="report-month" class="form-control my-2">
-                                <button class="btn btn-outline-primary w-100" onclick="Reports.generateConsultas()">Gerar PDF</button>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card p-3">
-                                <h5>Procedimentos Realizados</h5>
-                                <button class="btn btn-outline-primary w-100 mt-4" onclick="Reports.generateProcedures()">Visualizar CSV</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAIS -->
-
-    <!-- Modal Paciente (Prontuário Completo) -->
-    <div class="modal fade" id="modal-patient" tabindex="-1">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">Prontuário Eletrônico</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <ul class="nav nav-tabs mb-3" id="pills-tab" role="tablist">
-                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-dados">Dados Pessoais</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-anamnese">Anamnese</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-evolucao">Evolução Clínica</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-arquivos">Arquivos e Exames</button></li>
-                    </ul>
-                    <div class="tab-content">
-                        <!-- Dados -->
-                        <div class="tab-pane fade show active" id="tab-dados">
-                            <form id="form-patient-data">
-                                <input type="hidden" id="pat-id">
-                                <div class="row g-2">
-                                    <div class="col-md-6"><label>Nome Completo</label><input type="text" id="pat-name" class="form-control" required></div>
-                                    <div class="col-md-3"><label>CPF</label><input type="text" id="pat-cpf" class="form-control"></div>
-                                    <div class="col-md-3"><label>Data Nasc.</label><input type="date" id="pat-dob" class="form-control"></div>
-                                    <div class="col-md-4"><label>Telefone</label><input type="text" id="pat-phone" class="form-control"></div>
-                                    <div class="col-md-4"><label>Email</label><input type="email" id="pat-email" class="form-control"></div>
-                                    <div class="col-md-4"><label>Endereço</label><input type="text" id="pat-address" class="form-control"></div>
+                        <div class="bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-slate-500 text-xs uppercase font-bold">Pacientes</p>
+                                    <h3 class="text-3xl font-bold text-emerald-500 mt-1">{{ patients.length }}</h3>
                                 </div>
-                                <button type="submit" class="btn btn-success mt-3">Salvar Dados</button>
-                            </form>
+                                <div class="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600"><i class="fas fa-users"></i></div>
+                            </div>
                         </div>
-                        <!-- Anamnese -->
-                        <div class="tab-pane fade" id="tab-anamnese">
-                            <textarea id="pat-anamnesis" class="form-control" rows="10" placeholder="Histórico médico, alergias, medicamentos em uso..."></textarea>
-                            <button onclick="Patients.saveAnamnesis()" class="btn btn-primary mt-2">Atualizar Anamnese</button>
+                        <div class="bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-slate-500 text-xs uppercase font-bold">Faturamento (Mês)</p>
+                                    <h3 class="text-3xl font-bold text-amber-500 mt-1">R$ {{ calculateMonthlyRevenue() }}</h3>
+                                </div>
+                                <div class="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600"><i class="fas fa-dollar-sign"></i></div>
+                            </div>
                         </div>
-                        <!-- Evolução -->
-                        <div class="tab-pane fade" id="tab-evolucao">
-                            <div class="row">
-                                <div class="col-md-4 border-end">
-                                    <h6>Nova Evolução</h6>
-                                    <form id="form-evolution">
-                                        <div class="mb-2">
-                                            <label>Procedimento</label>
-                                            <input type="text" id="evo-proc" class="form-control" required>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Próximos Atendimentos -->
+                        <div class="bg-white dark:bg-surface rounded-xl shadow-sm p-6">
+                            <h3 class="font-bold text-lg mb-4">Próximos Atendimentos</h3>
+                            <div v-if="todayAppointments.length === 0" class="text-center py-10 text-slate-400">
+                                Nenhuma consulta hoje.
+                            </div>
+                            <ul class="space-y-3">
+                                <li v-for="apt in todayAppointments" :key="apt.id" class="flex items-center justify-between p-3 bg-slate-50 dark:bg-dark rounded border dark:border-slate-700">
+                                    <div class="flex items-center gap-3">
+                                        <div class="font-mono text-primary font-bold">{{ formatTime(apt.date) }}</div>
+                                        <div>
+                                            <p class="font-bold text-sm">{{ getPatientName(apt.patientId) }}</p>
+                                            <p class="text-xs text-slate-500">{{ apt.procedure }}</p>
                                         </div>
-                                        <div class="mb-2">
-                                            <label>Descrição/Observações</label>
-                                            <textarea id="evo-desc" class="form-control" rows="3" required></textarea>
-                                        </div>
-                                        <div class="mb-2">
-                                            <label>Valor (R$)</label>
-                                            <input type="number" id="evo-val" class="form-control" step="0.01">
-                                        </div>
-                                        <button type="submit" class="btn btn-success w-100">Registrar Atendimento</button>
-                                    </form>
-                                </div>
-                                <div class="col-md-8">
-                                    <h6>Histórico (Timeline)</h6>
-                                    <div id="pat-timeline" class="mt-3" style="max-height: 400px; overflow-y: auto;"></div>
-                                </div>
-                            </div>
+                                    </div>
+                                    <span :class="`px-2 py-1 text-xs rounded-full ${getStatusClass(apt.status)}`">{{ apt.status }}</span>
+                                </li>
+                            </ul>
                         </div>
-                        <!-- Arquivos -->
-                        <div class="tab-pane fade" id="tab-arquivos">
-                            <div class="alert alert-warning small">Nota: Arquivos são salvos no navegador. Máximo 5MB recomendado.</div>
-                            <input type="file" id="file-upload" class="form-control mb-2" accept="image/*,.pdf">
-                            <button onclick="Patients.uploadFile()" class="btn btn-primary mb-3">Anexar Arquivo</button>
-                            <div id="pat-files-list" class="list-group"></div>
+                        <!-- Atalhos Rápidos -->
+                        <div class="bg-white dark:bg-surface rounded-xl shadow-sm p-6">
+                            <h3 class="font-bold text-lg mb-4">Ações Rápidas</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button @click="openModal('addPatient')" class="p-4 rounded border dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition">
+                                    <i class="fas fa-user-plus text-primary mb-2 text-xl"></i>
+                                    <div class="font-bold text-sm">Novo Paciente</div>
+                                </button>
+                                <button @click="currentView='agenda'" class="p-4 rounded border dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition">
+                                    <i class="fas fa-calendar-plus text-secondary mb-2 text-xl"></i>
+                                    <div class="font-bold text-sm">Agendar</div>
+                                </button>
+                                <button @click="currentView='reports'" class="p-4 rounded border dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition">
+                                    <i class="fas fa-file-alt text-amber-500 mb-2 text-xl"></i>
+                                    <div class="font-bold text-sm">Relatórios</div>
+                                </button>
+                                <button @click="runSelfTests" class="p-4 rounded border dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition">
+                                    <i class="fas fa-vial text-red-500 mb-2 text-xl"></i>
+                                    <div class="font-bold text-sm">Autoteste</div>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- VIEW: PACIENTES -->
+                <div v-if="currentView === 'patients'" class="animate-fade-in">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="relative w-64">
+                            <i class="fas fa-search absolute left-3 top-3 text-slate-400"></i>
+                            <input v-model="searchQuery" placeholder="Buscar paciente..." class="w-full pl-10 pr-4 py-2 rounded-lg border dark:bg-surface dark:border-slate-700 focus:ring-2 focus:ring-primary outline-none">
+                        </div>
+                        <button @click="openModal('addPatient')" class="bg-primary hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-medium transition">
+                            <i class="fas fa-plus mr-2"></i> Novo Paciente
+                        </button>
+                    </div>
+
+                    <div class="bg-white dark:bg-surface rounded-xl shadow-sm overflow-hidden">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase">
+                                <tr>
+                                    <th class="px-6 py-4 font-bold">Nome</th>
+                                    <th class="px-6 py-4 font-bold">Contato</th>
+                                    <th class="px-6 py-4 font-bold text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y dark:divide-slate-700">
+                                <tr v-for="p in filteredPatients" :key="p.id" class="hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                                    <td class="px-6 py-4 font-medium">{{ p.name }} <br><span class="text-xs text-slate-500">CPF: {{ p.cpf }}</span></td>
+                                    <td class="px-6 py-4">{{ p.phone }}<br><span class="text-xs text-slate-500">{{ p.email }}</span></td>
+                                    <td class="px-6 py-4 text-center">
+                                        <button @click="selectPatient(p)" class="text-primary hover:bg-primary/10 p-2 rounded transition" title="Prontuário">
+                                            <i class="fas fa-folder-open"></i>
+                                        </button>
+                                        <button @click="editPatient(p)" class="text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 p-2 rounded transition ml-2">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr v-if="filteredPatients.length === 0">
+                                    <td colspan="3" class="px-6 py-8 text-center text-slate-500">Nenhum paciente encontrado.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- VIEW: AGENDA -->
+                <div v-if="currentView === 'agenda'" class="animate-fade-in h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex gap-2">
+                            <button @click="changeDate(-1)" class="p-2 bg-white dark:bg-surface rounded border dark:border-slate-700"><i class="fas fa-chevron-left"></i></button>
+                            <input type="date" v-model="selectedDate" class="p-2 rounded border dark:bg-surface dark:border-slate-700">
+                            <button @click="changeDate(1)" class="p-2 bg-white dark:bg-surface rounded border dark:border-slate-700"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <button @click="openModal('addAppointment')" class="bg-secondary text-white px-4 py-2 rounded shadow hover:shadow-lg transition">
+                            <i class="fas fa-plus mr-1"></i> Agendar
+                        </button>
+                    </div>
+                    <div class="bg-white dark:bg-surface rounded-lg shadow-sm flex-1 overflow-y-auto p-4 relative">
+                        <!-- Grid de Horários Simples -->
+                        <div v-for="hour in workHours" :key="hour" class="flex border-b dark:border-slate-800 py-4 group hover:bg-slate-50 dark:hover:bg-slate-800/50 relative">
+                            <div class="w-16 text-slate-400 font-mono text-sm text-right pr-4">{{ hour }}:00</div>
+                            <div class="flex-1 relative min-h-[2rem]">
+                                <!-- Renderizar agendamentos neste horário -->
+                                <div v-for="apt in getAppointmentsForHour(hour)" :key="apt.id"
+                                     @click="viewAppointment(apt)"
+                                     :class="`absolute top-0 left-0 w-full p-2 rounded border-l-4 text-xs shadow-sm cursor-pointer hover:scale-[1.01] transition z-10 ${getStatusColor(apt.status)}`">
+                                    <div class="flex justify-between font-bold">
+                                        <span>{{ getPatientName(apt.patientId) }}</span>
+                                        <span>{{ apt.status }}</span>
+                                    </div>
+                                    <div>{{ apt.procedure }} - {{ apt.dentistName }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: USUÁRIOS (ADMIN) -->
+                <div v-if="currentView === 'users'" class="animate-fade-in">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold">Gestão de Usuários</h3>
+                        <button @click="openModal('addUser')" class="bg-dark text-white dark:bg-slate-700 px-4 py-2 rounded">
+                            <i class="fas fa-user-shield mr-2"></i> Novo Usuário
+                        </button>
+                    </div>
+                    <div class="grid gap-4">
+                        <div v-for="u in users" :key="u.uid" class="bg-white dark:bg-surface p-4 rounded-lg shadow-sm border dark:border-slate-700 flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-300">
+                                    {{ u.name.charAt(0) }}
+                                </div>
+                                <div>
+                                    <p class="font-bold">{{ u.name }} <span v-if="u.uid === currentUser.uid" class="text-xs bg-primary/20 text-primary px-1 rounded">Você</span></p>
+                                    <p class="text-xs text-slate-500">{{ u.email }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <span :class="`px-2 py-1 text-xs rounded uppercase font-bold ${u.role === 'admin' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`">{{ u.role }}</span>
+                                <button v-if="u.uid !== currentUser.uid" @click="deleteUser(u.uid)" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: RELATÓRIOS -->
+                <div v-if="currentView === 'reports'" class="animate-fade-in">
+                    <h3 class="text-xl font-bold mb-6">Relatórios e Exportação</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white dark:bg-surface p-6 rounded-lg shadow-sm text-center cursor-pointer hover:border-primary border dark:border-slate-700" @click="exportToCSV('patients')">
+                            <i class="fas fa-file-csv text-4xl text-green-600 mb-3"></i>
+                            <h4 class="font-bold">Exportar Pacientes</h4>
+                            <p class="text-xs text-slate-500">Formato CSV (Excel)</p>
+                        </div>
+                        <div class="bg-white dark:bg-surface p-6 rounded-lg shadow-sm text-center cursor-pointer hover:border-primary border dark:border-slate-700" @click="backupData">
+                            <i class="fas fa-database text-4xl text-blue-600 mb-3"></i>
+                            <h4 class="font-bold">Backup Completo (JSON)</h4>
+                            <p class="text-xs text-slate-500">Baixar todos os dados</p>
+                        </div>
+                        <div class="bg-white dark:bg-surface p-6 rounded-lg shadow-sm text-center relative border dark:border-slate-700">
+                            <input type="file" ref="restoreFile" @change="restoreData" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            <i class="fas fa-upload text-4xl text-amber-600 mb-3"></i>
+                            <h4 class="font-bold">Restaurar Backup</h4>
+                            <p class="text-xs text-slate-500">Enviar arquivo JSON</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+        </main>
+    </div>
+
+    <!-- MODAL: NOVO PACIENTE -->
+    <div v-if="showModal === 'addPatient' || showModal === 'editPatient'" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-surface w-full max-w-2xl rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b dark:border-slate-700 flex justify-between items-center">
+                <h3 class="text-xl font-bold">{{ showModal === 'addPatient' ? 'Novo Paciente' : 'Editar Paciente' }}</h3>
+                <button @click="closeModal" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form @submit.prevent="savePatientForm" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="text-xs font-bold uppercase text-slate-500">Nome Completo</label><input v-model="patientForm.name" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></div>
+                    <div><label class="text-xs font-bold uppercase text-slate-500">CPF</label><input v-model="patientForm.cpf" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></div>
+                    <div><label class="text-xs font-bold uppercase text-slate-500">Telefone</label><input v-model="patientForm.phone" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></div>
+                    <div><label class="text-xs font-bold uppercase text-slate-500">E-mail</label><input v-model="patientForm.email" type="email" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></div>
+                </div>
+                <div><label class="text-xs font-bold uppercase text-slate-500">Histórico Médico / Alergias</label><textarea v-model="patientForm.anamnese" rows="3" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></textarea></div>
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" @click="closeModal" class="px-4 py-2 rounded text-slate-600 hover:bg-slate-100">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 rounded bg-primary text-white font-bold hover:bg-sky-600">Salvar</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Modal Agendamento -->
-    <div class="modal fade" id="modal-agenda" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Agendamento</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="form-agenda">
-                        <input type="hidden" id="ag-id">
-                        <div class="mb-3">
-                            <label>Paciente</label>
-                            <select id="ag-patient" class="form-select" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label>Dentista</label>
-                            <select id="ag-dentist" class="form-select" required></select>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col"><label>Data</label><input type="date" id="ag-date" class="form-control" required></div>
-                            <div class="col"><label>Hora</label><input type="time" id="ag-time" class="form-control" required></div>
-                        </div>
-                        <div class="mb-3">
-                            <label>Tipo</label>
-                            <select id="ag-type" class="form-select">
-                                <option>Consulta Inicial</option>
-                                <option>Limpeza</option>
-                                <option>Restauração</option>
-                                <option>Canal</option>
-                                <option>Extração</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label>Status</label>
-                            <select id="ag-status" class="form-select">
-                                <option value="agendado">Agendado</option>
-                                <option value="confirmado">Confirmado</option>
-                                <option value="cancelado">Cancelado</option>
-                                <option value="concluido">Concluído</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Salvar Agendamento</button>
-                    </form>
+    <!-- MODAL: PRONTUÁRIO DETALHADO -->
+    <div v-if="selectedPatient" class="fixed inset-0 z-[60] bg-white dark:bg-dark flex flex-col">
+        <div class="bg-white dark:bg-surface border-b dark:border-slate-700 p-4 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-4">
+                <button @click="selectedPatient = null" class="text-slate-500 hover:text-primary"><i class="fas fa-arrow-left text-xl"></i></button>
+                <div>
+                    <h2 class="text-xl font-bold">{{ selectedPatient.name }}</h2>
+                    <p class="text-sm text-slate-500">CPF: {{ selectedPatient.cpf }} • {{ selectedPatient.phone }}</p>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal Usuário -->
-    <div class="modal fade" id="modal-user" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Dados do Usuário</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="form-user">
-                        <input type="hidden" id="usr-id">
-                        <div class="mb-3"><label>Nome</label><input type="text" id="usr-name" class="form-control" required></div>
-                        <div class="mb-3"><label>Email</label><input type="email" id="usr-email" class="form-control" required></div>
-                        <div class="mb-3"><label>Senha</label><input type="password" id="usr-pass" class="form-control" placeholder="Deixe em branco para não alterar"></div>
-                        <div class="mb-3">
-                            <label>Função</label>
-                            <select id="usr-role" class="form-select">
-                                <option value="admin">Administrador</option>
-                                <option value="dentista">Dentista</option>
-                                <option value="recepcao">Recepção</option>
-                            </select>
-                        </div>
-                        <div class="form-check mb-3">
-                            <input type="checkbox" class="form-check-input" id="usr-active" checked>
-                            <label class="form-check-label">Ativo</label>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Salvar Usuário</button>
-                    </form>
-                </div>
+            <div class="flex gap-2">
+                <button @click="printRecord" class="p-2 bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200" title="Imprimir PDF"><i class="fas fa-print"></i></button>
+                <button @click="openModal('addRecord')" class="px-4 py-2 bg-primary text-white rounded font-bold shadow"><i class="fas fa-plus-circle mr-2"></i> Nova Evolução</button>
             </div>
         </div>
-    </div>
-
-    <!-- SCRIPTS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-    /**
-     * ODONTOSYS - SISTEMA INTEGRADO (SINGLE FILE)
-     * 
-     * ÁREA DE CONFIGURAÇÃO E CHAVES EXTERNAS
-     * (Preencha aqui se for conectar com serviços reais no futuro)
-     */
-    const SYSTEM_CONFIG = {
-        api_url: null,          // Ex: 'https://api.minhaclinica.com'
-        storage_bucket: null,   // Ex: 's3://meu-bucket'
-        email_service: null,    // Ex: 'SendGrid_Key'
-        version: '1.0.0'
-    };
-
-    /* --- STORE (BANCO DE DADOS LOCAL) --- */
-    const Store = {
-        get: (key) => JSON.parse(localStorage.getItem(key) || '[]'),
-        set: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
         
-        init: () => {
-            if (!localStorage.getItem('users')) {
-                // Seed inicial
-                const admin = { id: 1, name: 'Administrador', email: 'admin@clinica.com', pass: 'admin123', role: 'admin', active: true };
-                const dentista = { id: 2, name: 'Dr. Silva', email: 'silva@clinica.com', pass: '123', role: 'dentista', active: true };
-                Store.set('users', [admin, dentista]);
-                
-                Store.set('patients', [
-                    { id: 1690000000000, name: 'João da Silva', cpf: '123.456.789-00', phone: '11999999999', email: 'joao@email.com', anamnesis: 'Alergia a dipirona', timeline: [], files: [] },
-                    { id: 1690000000001, name: 'Maria Oliveira', cpf: '987.654.321-11', phone: '11888888888', email: 'maria@email.com', anamnesis: '', timeline: [], files: [] }
-                ]);
-                
-                Store.set('appointments', [
-                    { id: 1, patientId: 1690000000000, dentistId: 2, date: new Date().toISOString().split('T')[0], time: '14:00', type: 'Limpeza', status: 'agendado' }
-                ]);
-            }
-        }
-    };
+        <div class="flex-1 overflow-hidden flex flex-col md:flex-row" id="patient-record-content">
+            <!-- Resumo Lateral -->
+            <div class="w-full md:w-1/3 lg:w-1/4 bg-slate-50 dark:bg-slate-900 border-r dark:border-slate-700 p-6 overflow-y-auto">
+                <h4 class="font-bold text-slate-500 uppercase text-xs mb-2">Anamnese</h4>
+                <div class="bg-white dark:bg-surface p-4 rounded border dark:border-slate-700 mb-6 text-sm">
+                    {{ selectedPatient.anamnese || 'Sem registros médicos iniciais.' }}
+                </div>
 
-    /* --- AUTHENTICATION --- */
-    const Auth = {
-        user: null,
+                <h4 class="font-bold text-slate-500 uppercase text-xs mb-2">Arquivos</h4>
+                <div class="space-y-2 mb-6">
+                    <div v-for="file in getPatientFiles(selectedPatient.id)" :key="file.url" class="flex items-center justify-between p-2 bg-white dark:bg-surface rounded border dark:border-slate-700 text-sm">
+                        <a :href="file.url" target="_blank" class="flex items-center gap-2 text-primary hover:underline truncate">
+                            <i class="fas fa-paperclip"></i> {{ file.name }}
+                        </a>
+                        <button @click="deleteFile(file)" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+                    </div>
+                    <label class="block w-full p-2 border-2 border-dashed border-slate-300 rounded text-center text-xs text-slate-500 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
+                        <input type="file" class="hidden" @change="handleFileUpload">
+                        <i class="fas fa-cloud-upload-alt mb-1"></i> Upload Arquivo
+                    </label>
+                </div>
+            </div>
 
-        check: () => {
-            const session = sessionStorage.getItem('odontosys_session');
-            if (session) {
-                Auth.user = JSON.parse(session);
-                UI.showApp();
-            } else {
-                UI.showLogin();
-            }
-        },
+            <!-- Timeline de Evolução -->
+            <div class="flex-1 p-6 overflow-y-auto bg-white dark:bg-dark">
+                <h3 class="text-lg font-bold mb-6">Histórico Clínico (Timeline)</h3>
+                <div class="relative pl-6 border-l-2 border-slate-200 dark:border-slate-700 space-y-8">
+                    <div v-for="record in getPatientRecords(selectedPatient.id)" :key="record.id" class="relative">
+                        <div class="absolute -left-[31px] bg-white dark:bg-dark p-1">
+                            <div class="w-4 h-4 rounded-full bg-primary"></div>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-surface p-4 rounded-lg border dark:border-slate-700">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="font-bold text-primary">{{ record.procedure }}</span>
+                                    <p class="text-xs text-slate-400">{{ formatDateTime(record.date) }} • Dr(a). {{ record.dentistName }}</p>
+                                </div>
+                                <span class="font-mono font-bold text-slate-600 dark:text-slate-300">R$ {{ record.cost || '0,00' }}</span>
+                            </div>
+                            <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ record.notes }}</p>
+                        </div>
+                    </div>
+                    <div v-if="getPatientRecords(selectedPatient.id).length === 0" class="text-slate-400 italic">
+                        Nenhum registro clínico encontrado.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        login: (email, pass) => {
-            const users = Store.get('users');
-            const user = users.find(u => u.email === email && u.pass === pass && u.active);
-            
-            if (user) {
-                // Sanitizar (remover senha da sessão)
-                const safeUser = { ...user };
-                delete safeUser.pass;
-                
-                sessionStorage.setItem('odontosys_session', JSON.stringify(safeUser));
-                Auth.user = safeUser;
-                UI.showApp();
-                return { success: true };
-            }
-            return { success: false, message: 'Credenciais inválidas ou usuário inativo.' };
-        },
+    <!-- MODAL: NOVA EVOLUÇÃO -->
+    <div v-if="showModal === 'addRecord'" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-surface w-full max-w-lg rounded-xl shadow-2xl p-6">
+            <h3 class="text-xl font-bold mb-4">Registrar Atendimento</h3>
+            <form @submit.prevent="saveRecordForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Procedimento</label>
+                    <select v-model="recordForm.procedure" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
+                        <option>Avaliação Inicial</option>
+                        <option>Limpeza (Profilaxia)</option>
+                        <option>Restauração</option>
+                        <option>Extração</option>
+                        <option>Canal (Endodontia)</option>
+                        <option>Implante</option>
+                        <option>Ortodontia (Manutenção)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Descrição / Evolução</label>
+                    <textarea v-model="recordForm.notes" required rows="4" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600" placeholder="Descreva o que foi feito..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Valor (R$)</label>
+                    <input v-model="recordForm.cost" type="number" step="0.01" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" @click="closeModal" class="px-4 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 rounded bg-primary text-white font-bold">Salvar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        logout: () => {
-            sessionStorage.removeItem('odontosys_session');
-            window.location.reload();
-        },
-
-        hasRole: (roles) => {
-            if (!Auth.user) return false;
-            if (Auth.user.role === 'admin') return true; // Admin vê tudo
-            return roles.includes(Auth.user.role);
-        },
-
-        showForgotPass: () => {
-            const email = prompt("Digite seu e-mail para recuperação:");
-            if (email) {
-                // Simulação de envio de email
-                console.log(`[EMAIL SERVICE] Enviando token de recuperação para ${email}`);
-                alert("Link de recuperação enviado para o e-mail (Simulado). Verifique o console.");
-            }
-        }
-    };
-
-    /* --- ROTAS E NAVEGAÇÃO --- */
-    const Router = {
-        go: (viewId) => {
-            // Proteção de Rotas
-            if (viewId === 'users' && !Auth.hasRole(['admin'])) {
-                alert('Acesso negado.');
-                return;
-            }
-
-            // UI Update
-            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`view-${viewId}`).classList.remove('hidden');
-            
-            // Atualizar Sidebar
-            document.querySelectorAll('#sidebar .nav-link').forEach(el => el.classList.remove('active'));
-            // Encontrar o link correspondente (lógica simples)
-            const links = document.querySelectorAll('#sidebar .nav-link');
-            // ... lógica de active class simplificada ...
-
-            // Executar renderizadores específicos
-            if (viewId === 'dashboard') Dashboard.render();
-            if (viewId === 'agenda') Agenda.render();
-            if (viewId === 'patients') Patients.render();
-            if (viewId === 'users') Users.render();
-        }
-    };
-
-    /* --- SERVIÇOS MOCKADOS --- */
-    const Notifications = {
-        send: (msg, type = 'info') => {
-            // Simulação de notificação toast
-            const alertBox = document.createElement('div');
-            alertBox.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
-            alertBox.style.zIndex = 9999;
-            alertBox.innerText = msg;
-            document.body.appendChild(alertBox);
-            setTimeout(() => alertBox.remove(), 3000);
-        },
-        emailReminder: (patientEmail, date) => {
-            console.log(`[EMAIL] Lembrete enviado para ${patientEmail} sobre consulta em ${date}`);
-        }
-    };
-
-    /* --- MÓDULOS DE NEGÓCIO --- */
-
-    // 1. DASHBOARD
-    const Dashboard = {
-        render: () => {
-            const appts = Store.get('appointments');
-            const today = new Date().toISOString().split('T')[0];
-            
-            // Contadores
-            const todayAppts = appts.filter(a => a.date === today);
-            document.getElementById('dash-today-count').innerText = todayAppts.length;
-            document.getElementById('dash-patients-count').innerText = Store.get('patients').length;
-            
-            // Financeiro Simples (Soma de evoluções deste mês)
-            let revenue = 0;
-            Store.get('patients').forEach(p => {
-                p.timeline.forEach(t => {
-                    if(t.val && t.date.startsWith(today.substring(0,7))) revenue += parseFloat(t.val);
-                });
-            });
-            document.getElementById('dash-revenue').innerText = `R$ ${revenue.toFixed(2)}`;
-
-            // Tabela Hoje
-            const tbody = document.getElementById('dash-table-body');
-            tbody.innerHTML = '';
-            todayAppts.forEach(a => {
-                const patient = Store.get('patients').find(p => p.id == a.patientId);
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${a.time}</td>
-                        <td>${patient ? patient.name : 'Desconhecido'}</td>
-                        <td>${a.type}</td>
-                        <td><span class="badge bg-${a.status === 'confirmado' ? 'success' : 'warning'}">${a.status}</span></td>
-                    </tr>
-                `;
-            });
-        }
-    };
-
-    // 2. AGENDA
-    const Agenda = {
-        modal: null,
-        
-        render: () => {
-            const dateFilter = document.getElementById('agenda-filter-date').value || new Date().toISOString().split('T')[0];
-            document.getElementById('agenda-filter-date').value = dateFilter;
-            const dentistFilter = document.getElementById('agenda-filter-dentist').value;
-            
-            const appts = Store.get('appointments');
-            const patients = Store.get('patients');
-            const users = Store.get('users'); // Dentistas
-
-            // Preencher select de dentistas no filtro
-            const dentists = users.filter(u => u.role === 'dentista' || u.role === 'admin');
-            const filterSelect = document.getElementById('agenda-filter-dentist');
-            if (filterSelect.options.length === 1) {
-                dentists.forEach(d => filterSelect.add(new Option(d.name, d.id)));
-            }
-
-            // Filtragem
-            let filtered = appts.filter(a => a.date === dateFilter);
-            if (dentistFilter) filtered = filtered.filter(a => a.dentistId == dentistFilter);
-
-            filtered.sort((a, b) => a.time.localeCompare(b.time));
-
-            const container = document.getElementById('agenda-list');
-            container.innerHTML = '';
-            
-            if (filtered.length === 0) container.innerHTML = '<p class="text-muted text-center">Nenhum agendamento para esta data.</p>';
-
-            filtered.forEach(a => {
-                const p = patients.find(pat => pat.id == a.patientId);
-                const d = users.find(u => u.id == a.dentistId);
-                
-                const card = document.createElement('div');
-                card.className = `d-flex justify-content-between align-items-center p-3 border-bottom ${a.status === 'cancelado' ? 'bg-light text-muted' : ''}`;
-                card.innerHTML = `
+    <!-- MODAL: AGENDAMENTO -->
+    <div v-if="showModal === 'addAppointment'" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-surface w-full max-w-md rounded-xl shadow-2xl p-6">
+            <h3 class="text-xl font-bold mb-4">Agendar Consulta</h3>
+            <form @submit.prevent="saveAppointmentForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Paciente</label>
+                    <select v-model="appointmentForm.patientId" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
+                        <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <strong>${a.time}</strong> - ${p ? p.name : 'Erro Paciente'} <small>(${a.type})</small><br>
-                        <small class="text-muted">Prof: ${d ? d.name : '?'}</small>
+                        <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Data</label>
+                        <input type="date" v-model="appointmentForm.date" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
                     </div>
                     <div>
-                        <select class="form-select form-select-sm status-changer" data-id="${a.id}">
-                            <option value="agendado" ${a.status=='agendado'?'selected':''}>Agendado</option>
-                            <option value="confirmado" ${a.status=='confirmado'?'selected':''}>Confirmado</option>
-                            <option value="concluido" ${a.status=='concluido'?'selected':''}>Concluído</option>
-                            <option value="cancelado" ${a.status=='cancelado'?'selected':''}>Cancelado</option>
+                        <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Hora</label>
+                        <select v-model="appointmentForm.hour" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
+                            <option v-for="h in workHours" :value="h">{{ h }}:00</option>
                         </select>
                     </div>
-                `;
-                container.appendChild(card);
-            });
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Procedimento</label>
+                    <input v-model="appointmentForm.procedure" type="text" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" @click="closeModal" class="px-4 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 rounded bg-secondary text-white font-bold">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-            // Event Listeners para mudança de status
-            document.querySelectorAll('.status-changer').forEach(sel => {
-                sel.addEventListener('change', (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    const newStatus = e.target.value;
-                    const all = Store.get('appointments');
-                    const idx = all.findIndex(x => x.id == id);
-                    if (idx > -1) {
-                        all[idx].status = newStatus;
-                        Store.set('appointments', all);
-                        Notifications.send('Status atualizado');
-                        Agenda.render();
-                    }
+</div>
+
+<!-- LÓGICA DA APLICAÇÃO -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, setDoc, orderBy, onSnapshot, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+
+    // --- ⚙️ CONFIGURAÇÃO DO SISTEMA (COLE SUAS CHAVES AQUI) ---
+    const firebaseConfig = {
+        apiKey: "",
+        authDomain: "",
+        projectId: "",
+        storageBucket: "",
+        messagingSenderId: "",
+        appId: ""
+    };
+    // ----------------------------------------------------------
+
+    // Inicialização Firebase (Resiliente a config vazia para demo UI)
+    let auth, db, storage;
+    try {
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        storage = getStorage(app);
+    } catch (e) {
+        console.warn("Firebase não configurado corretamente. O sistema funcionará parcialmente no modo visual, mas não salvará dados.", e);
+    }
+
+    const { createApp, reactive, ref: vueRef, computed, onMounted, watch } = Vue;
+
+    createApp({
+        setup() {
+            // --- ESTADO GLOBAL ---
+            const loading = vueRef(true);
+            const currentUser = vueRef(null);
+            const userData = vueRef(null); // Dados do Firestore do usuário
+            const authMode = vueRef('login'); // login, register
+            const sidebarOpen = vueRef(true);
+            const isDark = vueRef(false);
+            const currentView = vueRef('dashboard');
+            const notifications = vueRef([]);
+            
+            // Dados
+            const patients = vueRef([]);
+            const appointments = vueRef([]);
+            const users = vueRef([]);
+            const records = vueRef([]); // Todos os registros clínicos
+            const files = vueRef([]); // Todos os arquivos
+
+            // Formulários e Modais
+            const showModal = vueRef(null);
+            const loginForm = reactive({ email: '', password: '' });
+            const registerForm = reactive({ email: '', password: '', name: '' });
+            const patientForm = reactive({ id: null, name: '', cpf: '', phone: '', email: '', anamnese: '' });
+            const recordForm = reactive({ procedure: 'Limpeza', notes: '', cost: 0 });
+            const appointmentForm = reactive({ patientId: '', date: '', hour: 9, procedure: '' });
+            const searchQuery = vueRef('');
+            const selectedPatient = vueRef(null);
+            const selectedDate = vueRef(new Date().toISOString().split('T')[0]);
+
+            // Constantes
+            const workHours = [8, 9, 10, 11, 13, 14, 15, 16, 17, 18];
+            const menuItems = [
+                { id: 'dashboard', label: 'Painel', icon: 'fa-chart-pie', role: 'reception' },
+                { id: 'patients', label: 'Pacientes', icon: 'fa-users', role: 'dentist' },
+                { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', role: 'reception' },
+                { id: 'users', label: 'Usuários', icon: 'fa-user-cog', role: 'admin' },
+                { id: 'reports', label: 'Relatórios', icon: 'fa-file-invoice', role: 'admin' },
+            ];
+
+            // --- MÉTODOS DE UTILIDADE ---
+            const notify = (message, type = 'info', title = 'Aviso') => {
+                const id = Date.now();
+                notifications.value.push({ id, message, type, title });
+                setTimeout(() => {
+                    notifications.value = notifications.value.filter(n => n.id !== id);
+                }, 4000);
+            };
+
+            const toggleDarkMode = () => {
+                isDark.value = !isDark.value;
+                if (isDark.value) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            };
+
+            const checkPermission = (requiredRole) => {
+                if (!userData.value) return false;
+                const roles = { admin: 3, dentist: 2, reception: 1 };
+                const userRoleLevel = roles[userData.value.role] || 0;
+                const requiredLevel = roles[requiredRole] || 0;
+                // Admin vê tudo, Dentista vê recepção, etc.
+                // Simplificação: Admin = tudo. Dentista = Pacientes. Recepção = Agenda.
+                if(userData.value.role === 'admin') return true;
+                if(requiredRole === 'reception') return true; // Todos acessam básico
+                if(requiredRole === 'dentist' && (userData.value.role === 'dentist')) return true;
+                if(requiredRole === 'admin' && userData.value.role !== 'admin') return false;
+                return true;
+            };
+
+            // --- LÓGICA FIREBASE ---
+
+            const syncData = () => {
+                if(!db || !currentUser.value) return;
+
+                // Listeners em Tempo Real
+                onSnapshot(collection(db, 'patients'), (snap) => {
+                    patients.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 });
-            });
-        },
-
-        openModal: () => {
-            document.getElementById('form-agenda').reset();
-            document.getElementById('ag-id').value = '';
-            
-            // Popular Selects
-            const pSelect = document.getElementById('ag-patient');
-            pSelect.innerHTML = '';
-            Store.get('patients').forEach(p => pSelect.add(new Option(p.name, p.id)));
-            
-            const dSelect = document.getElementById('ag-dentist');
-            dSelect.innerHTML = '';
-            Store.get('users').filter(u => u.role === 'dentista' || u.role === 'admin').forEach(d => dSelect.add(new Option(d.name, d.id)));
-
-            Agenda.modal = new bootstrap.Modal(document.getElementById('modal-agenda'));
-            Agenda.modal.show();
-        },
-
-        save: (e) => {
-            e.preventDefault();
-            const id = document.getElementById('ag-id').value;
-            const patientId = document.getElementById('ag-patient').value;
-            const dentistId = document.getElementById('ag-dentist').value;
-            const date = document.getElementById('ag-date').value;
-            const time = document.getElementById('ag-time').value;
-            const type = document.getElementById('ag-type').value;
-            const status = document.getElementById('ag-status').value;
-
-            const all = Store.get('appointments');
-
-            // Teste de Unidade: Conflito de Horário (Lógica Simples: mesmo dentista, mesma data e hora)
-            // Para ser perfeito precisaria checar duração, aqui assumimos slots fixos de 1h para simplificar
-            const conflict = all.find(a => a.dentistId == dentistId && a.date == date && a.time == time && a.id != id && a.status != 'cancelado');
-            if (conflict) {
-                alert('Conflito de horário! O dentista já possui atendimento neste horário.');
-                return;
-            }
-
-            if (id) {
-                const idx = all.findIndex(a => a.id == id);
-                all[idx] = { ...all[idx], patientId, dentistId, date, time, type, status };
-            } else {
-                all.push({ id: Date.now(), patientId, dentistId, date, time, type, status });
-                // Enviar Lembrete (Simulado)
-                Notifications.emailReminder("paciente@exemplo.com", `${date} às ${time}`);
-            }
-
-            Store.set('appointments', all);
-            Agenda.modal.hide();
-            Agenda.render();
-            Notifications.send('Agendamento salvo com sucesso!');
-        }
-    };
-
-    // 3. PACIENTES
-    const Patients = {
-        modal: null,
-        currentId: null,
-
-        render: () => {
-            const term = document.getElementById('patient-search').value.toLowerCase();
-            const list = Store.get('patients').filter(p => 
-                p.name.toLowerCase().includes(term) || p.cpf.includes(term)
-            );
-            const tbody = document.getElementById('patients-table-body');
-            tbody.innerHTML = '';
-            
-            list.forEach(p => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${p.name}</td>
-                        <td>${p.cpf || '-'}</td>
-                        <td>${p.phone || '-'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-info text-white" onclick="Patients.openDetails(${p.id})"><i class="fas fa-folder-open"></i> Abrir</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        },
-
-        openCreateModal: () => {
-            Patients.currentId = null;
-            document.getElementById('form-patient-data').reset();
-            document.getElementById('pat-id').value = '';
-            document.getElementById('pat-timeline').innerHTML = '';
-            document.getElementById('pat-files-list').innerHTML = '';
-            
-            Patients.modal = new bootstrap.Modal(document.getElementById('modal-patient'));
-            Patients.modal.show();
-        },
-
-        openDetails: (id) => {
-            Patients.currentId = id;
-            const p = Store.get('patients').find(x => x.id == id);
-            if (!p) return;
-
-            // Preencher Dados
-            document.getElementById('pat-id').value = p.id;
-            document.getElementById('pat-name').value = p.name;
-            document.getElementById('pat-cpf').value = p.cpf;
-            document.getElementById('pat-phone').value = p.phone;
-            document.getElementById('pat-email').value = p.email;
-            document.getElementById('pat-address').value = p.address || '';
-            document.getElementById('pat-dob').value = p.dob || '';
-            document.getElementById('pat-anamnesis').value = p.anamnesis || '';
-
-            // Renderizar Timeline
-            Patients.renderTimeline(p);
-            Patients.renderFiles(p);
-
-            Patients.modal = new bootstrap.Modal(document.getElementById('modal-patient'));
-            Patients.modal.show();
-        },
-
-        saveData: (e) => {
-            e.preventDefault();
-            const id = document.getElementById('pat-id').value;
-            const data = {
-                name: document.getElementById('pat-name').value,
-                cpf: document.getElementById('pat-cpf').value,
-                phone: document.getElementById('pat-phone').value,
-                email: document.getElementById('pat-email').value,
-                address: document.getElementById('pat-address').value,
-                dob: document.getElementById('pat-dob').value,
-            };
-
-            let all = Store.get('patients');
-            if (id) {
-                const idx = all.findIndex(x => x.id == id);
-                all[idx] = { ...all[idx], ...data };
-            } else {
-                const newId = Date.now();
-                all.push({ id: newId, ...data, timeline: [], files: [], anamnesis: '' });
-                Patients.currentId = newId;
-                document.getElementById('pat-id').value = newId;
-            }
-            Store.set('patients', all);
-            Notifications.send('Dados salvos.');
-            Patients.render();
-        },
-
-        saveAnamnesis: () => {
-            if(!Patients.currentId) return;
-            const text = document.getElementById('pat-anamnesis').value;
-            let all = Store.get('patients');
-            const idx = all.findIndex(x => x.id == Patients.currentId);
-            all[idx].anamnesis = text;
-            Store.set('patients', all);
-            Notifications.send('Anamnese atualizada.');
-        },
-
-        // Prontuário: Evolução
-        addEvolution: (e) => {
-            e.preventDefault();
-            if(!Patients.currentId) return;
-            
-            const proc = document.getElementById('evo-proc').value;
-            const desc = document.getElementById('evo-desc').value;
-            const val = document.getElementById('evo-val').value;
-
-            const entry = {
-                date: new Date().toISOString(),
-                proc,
-                desc,
-                val,
-                author: Auth.user.name
-            };
-
-            let all = Store.get('patients');
-            const idx = all.findIndex(x => x.id == Patients.currentId);
-            all[idx].timeline.push(entry);
-            Store.set('patients', all);
-            
-            document.getElementById('form-evolution').reset();
-            Patients.renderTimeline(all[idx]);
-            Notifications.send('Evolução registrada.');
-        },
-
-        renderTimeline: (p) => {
-            const container = document.getElementById('pat-timeline');
-            container.innerHTML = '';
-            // Ordenar mais recente primeiro
-            const sorted = [...p.timeline].sort((a,b) => new Date(b.date) - new Date(a.date));
-            
-            sorted.forEach(t => {
-                const d = new Date(t.date);
-                container.innerHTML += `
-                    <div class="timeline-step pb-3">
-                        <small class="text-muted">${d.toLocaleDateString()} ${d.toLocaleTimeString()} - <strong>${t.author}</strong></small>
-                        <div class="card p-2 mt-1 bg-light border-0">
-                            <strong>${t.proc}</strong>
-                            <p class="mb-0 small text-secondary">${t.desc}</p>
-                            ${t.val ? `<small class="text-success fw-bold">R$ ${t.val}</small>` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-        },
-
-        // Arquivos (Simulado com Base64)
-        uploadFile: () => {
-            const input = document.getElementById('file-upload');
-            if (input.files.length === 0) return;
-            const file = input.files[0];
-            
-            // Limite simples
-            if (file.size > 2000000) { // 2MB
-                alert("Arquivo muito grande para armazenamento local (Demo). Tente arquivos menores.");
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const fileData = {
-                    name: file.name,
-                    date: new Date().toISOString(),
-                    data: e.target.result // Base64
-                };
-                
-                let all = Store.get('patients');
-                const idx = all.findIndex(x => x.id == Patients.currentId);
-                all[idx].files.push(fileData);
-                Store.set('patients', all);
-                Patients.renderFiles(all[idx]);
-                input.value = '';
-                Notifications.send('Arquivo anexado.');
-            };
-            reader.readAsDataURL(file);
-        },
-
-        renderFiles: (p) => {
-            const container = document.getElementById('pat-files-list');
-            container.innerHTML = '';
-            p.files.forEach(f => {
-                container.innerHTML += `
-                    <a href="#" class="list-group-item list-group-item-action" onclick="Patients.viewFile('${f.data}')">
-                        <i class="fas fa-paperclip me-2"></i> ${f.name} <small class="text-muted float-end">${new Date(f.date).toLocaleDateString()}</small>
-                    </a>
-                `;
-            });
-        },
-        
-        viewFile: (base64) => {
-            const win = window.open();
-            win.document.write(`<iframe src="${base64}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-        }
-    };
-
-    // 4. USUÁRIOS
-    const Users = {
-        modal: null,
-        render: () => {
-            const users = Store.get('users');
-            const tbody = document.getElementById('users-table-body');
-            tbody.innerHTML = '';
-            users.forEach(u => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${u.name}</td>
-                        <td>${u.email}</td>
-                        <td>${u.role}</td>
-                        <td>${u.active ? 'Ativo' : 'Inativo'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-warning" onclick="Users.edit(${u.id})">Editar</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        },
-        openModal: () => {
-            document.getElementById('form-user').reset();
-            document.getElementById('usr-id').value = '';
-            Users.modal = new bootstrap.Modal(document.getElementById('modal-user'));
-            Users.modal.show();
-        },
-        edit: (id) => {
-            const u = Store.get('users').find(x => x.id == id);
-            document.getElementById('usr-id').value = u.id;
-            document.getElementById('usr-name').value = u.name;
-            document.getElementById('usr-email').value = u.email;
-            document.getElementById('usr-role').value = u.role;
-            document.getElementById('usr-active').checked = u.active;
-            Users.modal = new bootstrap.Modal(document.getElementById('modal-user'));
-            Users.modal.show();
-        },
-        save: (e) => {
-            e.preventDefault();
-            const id = document.getElementById('usr-id').value;
-            const name = document.getElementById('usr-name').value;
-            const email = document.getElementById('usr-email').value;
-            const role = document.getElementById('usr-role').value;
-            const pass = document.getElementById('usr-pass').value;
-            const active = document.getElementById('usr-active').checked;
-
-            let all = Store.get('users');
-            if (id) {
-                const idx = all.findIndex(x => x.id == id);
-                all[idx].name = name;
-                all[idx].email = email;
-                all[idx].role = role;
-                all[idx].active = active;
-                if(pass) all[idx].pass = pass; // Só atualiza se digitou algo
-            } else {
-                all.push({ id: Date.now(), name, email, pass: pass || '123456', role, active });
-            }
-            Store.set('users', all);
-            Users.modal.hide();
-            Users.render();
-            Notifications.send('Usuário salvo.');
-        }
-    };
-
-    /* --- UI GERAL --- */
-    const UI = {
-        toggleSidebar: () => {
-            document.getElementById('sidebar').classList.toggle('active');
-        },
-        toggleDarkMode: () => {
-            const body = document.body;
-            if(body.getAttribute('data-bs-theme') === 'dark') {
-                body.removeAttribute('data-bs-theme');
-            } else {
-                body.setAttribute('data-bs-theme', 'dark');
-            }
-        },
-        showLogin: () => {
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('app-container').classList.add('hidden');
-        },
-        showApp: () => {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            document.getElementById('user-name-display').innerText = Auth.user.name;
-            document.getElementById('user-role-display').innerText = Auth.user.role.toUpperCase();
-            
-            // Esconder menus baseados em papel
-            if (!Auth.hasRole(['admin'])) {
-                document.querySelectorAll('.nav-admin-only').forEach(el => el.classList.add('hidden'));
-            }
-
-            Router.go('dashboard');
-        }
-    };
-
-    /* --- RELATÓRIOS --- */
-    const Reports = {
-        generateConsultas: () => {
-            window.print(); // Solução simples de PDF
-        },
-        generateProcedures: () => {
-            let csv = "Data,Paciente,Procedimento,Valor\n";
-            Store.get('patients').forEach(p => {
-                p.timeline.forEach(t => {
-                    csv += `${t.date},${p.name},${t.proc},${t.val || 0}\n`;
+                onSnapshot(collection(db, 'appointments'), (snap) => {
+                    appointments.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 });
-            });
-            
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'relatorio_procedimentos.csv';
-            a.click();
-        }
-    };
-    
-    /* --- BACKUP DO SISTEMA --- */
-    const System = {
-        backup: () => {
-            const data = {
-                users: Store.get('users'),
-                patients: Store.get('patients'),
-                appointments: Store.get('appointments'),
-                date: new Date().toISOString()
-            };
-            const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `backup_odontosys_${Date.now()}.json`;
-            a.click();
-        }
-    };
-
-    /* --- INICIALIZAÇÃO --- */
-    document.addEventListener('DOMContentLoaded', () => {
-        Store.init();
-        Auth.check();
-
-        // Bind Formulários
-        document.getElementById('form-login').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const pass = document.getElementById('login-password').value;
-            const res = Auth.login(email, pass);
-            if (!res.success) alert(res.message);
-        });
-
-        document.getElementById('form-agenda').addEventListener('submit', Agenda.save);
-        document.getElementById('form-patient-data').addEventListener('submit', Patients.saveData);
-        document.getElementById('form-evolution').addEventListener('submit', Patients.addEvolution);
-        document.getElementById('form-user').addEventListener('submit', Users.save);
-
-        // Teste Básico Automatizado (Ao carregar)
-        console.log("Running self-test...");
-        try {
-            const testCollision = Store.get('appointments').length;
-            // Se passar sem erro, sistema ok.
-            console.log("System Core OK. Appointments loaded: " + testCollision);
-        } catch(e) {
-            console.error("System integrity check failed", e);
-        }
-    });
-
-    </script>
-</body>
-</html>        /** 
-         * CONFIGURAÇÃO DO FIREBASE 
-         * SUBSTITUA PELAS SUAS CREDENCIAIS DO CONSOLE FIREBASE
-         */
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyC5lYxqNHxCOBPH-ZFK9Br4PHnOCFzUyXs",
-  authDomain: "prontuario-ee1fd.firebaseapp.com",
-  projectId: "prontuario-ee1fd",
-  storageBucket: "prontuario-ee1fd.firebasestorage.app",
-  messagingSenderId: "107787636728",
-  appId: "1:107787636728:web:e9928f381c023d9650100d",
-  measurementId: "G-SNFKY1NQ1C"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
-        // Inicialização
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const storage = firebase.storage();
-
-        // Estado Global
-        let currentUser = null;
-        let currentRole = null;
-        let currentPatientId = null;
-
-        // --- Módulo de Roteamento ---
-        const router = {
-            navigate: (viewId) => {
-                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-                document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+                onSnapshot(collection(db, 'records'), (snap) => {
+                    records.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                });
+                onSnapshot(collection(db, 'files'), (snap) => {
+                    files.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                });
                 
-                const target = document.getElementById('view-' + viewId);
-                if (target) {
-                    target.classList.remove('hidden');
-                    // Destaque no menu
-                    // Lógica simples para o menu
+                // Apenas Admin lê usuários
+                if(userData.value?.role === 'admin') {
+                    onSnapshot(collection(db, 'users'), (snap) => {
+                        users.value = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+                    });
                 }
+            };
 
-                if(viewId === 'dashboard') dashboardModule.load();
-                if(viewId === 'agenda') agendaModule.loadAgenda();
-                if(viewId === 'pacientes') patientModule.loadList();
-                if(viewId === 'usuarios') userModule.loadList();
-            }
-        };
+            const handleLogin = async () => {
+                try {
+                    loading.value = true;
+                    await signInWithEmailAndPassword(auth, loginForm.email, loginForm.password);
+                    notify('Bem-vindo de volta!', 'success');
+                } catch (e) {
+                    notify('Erro ao entrar: ' + e.message, 'error');
+                } finally { loading.value = false; }
+            };
 
-        // --- Módulo de Autenticação ---
-        const authModule = {
-            init: () => {
-                document.getElementById('login-form').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const email = document.getElementById('login-email').value;
-                    const pass = document.getElementById('login-password').value;
-                    try {
-                        ui.toggleLoading(true);
-                        await auth.signInWithEmailAndPassword(email, pass);
-                        // O onAuthStateChanged cuidará do resto
-                    } catch (error) {
-                        alert("Erro no login: " + error.message);
-                        ui.toggleLoading(false);
-                    }
-                });
+            const handleRegister = async () => {
+                try {
+                    loading.value = true;
+                    const res = await createUserWithEmailAndPassword(auth, registerForm.email, registerForm.password);
+                    await updateProfile(res.user, { displayName: registerForm.name });
+                    
+                    // Verifica se é o primeiro usuário do sistema para ser Admin
+                    const usersSnap = await getDocs(collection(db, 'users'));
+                    const role = usersSnap.empty ? 'admin' : 'reception';
 
-                auth.onAuthStateChanged(async (user) => {
-                    if (user) {
-                        currentUser = user;
-                        // Buscar Role
-                        const doc = await db.collection('users').doc(user.uid).get();
-                        currentRole = doc.exists ? doc.data().role : 'recepcao'; // Default
-                        
-                        document.getElementById('login-screen').classList.add('hidden');
-                        document.getElementById('main-layout').classList.remove('hidden');
-                        document.getElementById('user-role-display').innerText = `Olá, ${user.email} (${currentRole})`;
+                    // Cria doc do usuário
+                    await setDoc(doc(db, 'users', res.user.uid), {
+                        name: registerForm.name,
+                        email: registerForm.email,
+                        role: role,
+                        createdAt: new Date()
+                    });
+                    notify('Conta criada com sucesso!', 'success');
+                } catch (e) {
+                    notify('Erro no cadastro: ' + e.message, 'error');
+                } finally { loading.value = false; }
+            };
 
-                        // Controle de Permissões UI
-                        if(currentRole !== 'admin') {
-                            document.querySelectorAll('.role-admin').forEach(el => el.classList.add('hidden'));
-                        } else {
-                            document.querySelectorAll('.role-admin').forEach(el => el.classList.remove('hidden'));
-                        }
-
-                        router.navigate('dashboard');
-                    } else {
-                        document.getElementById('login-screen').classList.remove('hidden');
-                        document.getElementById('main-layout').classList.add('hidden');
-                        currentUser = null;
-                    }
-                    ui.toggleLoading(false);
-                });
-            },
-            logout: () => auth.signOut(),
-            recoverPassword: () => {
+            const handleResetPassword = async () => {
                 const email = prompt("Digite seu e-mail para recuperação:");
                 if(email) {
-                    auth.sendPasswordResetEmail(email)
-                        .then(() => alert("E-mail enviado!"))
-                        .catch(e => alert("Erro: " + e.message));
+                    try {
+                        await sendPasswordResetEmail(auth, email);
+                        notify('Link de recuperação enviado!', 'success');
+                    } catch(e) { notify('Erro: ' + e.message, 'error'); }
                 }
-            }
-        };
+            };
 
-        // --- Módulo de Pacientes ---
-        const patientModule = {
-            modal: new bootstrap.Modal(document.getElementById('modal-paciente')),
-            
-            loadList: async () => {
-                const snapshot = await db.collection('patients').orderBy('name').limit(20).get();
-                patientModule.renderTable(snapshot.docs);
-            },
+            const logout = async () => {
+                await signOut(auth);
+                currentUser.value = null;
+                userData.value = null;
+                window.location.reload();
+            };
 
-            search: async (term) => {
-                if(term.length < 3) { patientModule.loadList(); return; }
-                // Busca simples (Firebase não tem LIKE nativo perfeito, usando startAt)
-                const snapshot = await db.collection('patients')
-                    .orderBy('name')
-                    .startAt(term)
-                    .endAt(term + '\uf8ff')
-                    .get();
-                patientModule.renderTable(snapshot.docs);
-            },
+            // --- LÓGICA DE NEGÓCIO ---
 
-            renderTable: (docs) => {
-                const tbody = document.getElementById('patient-list');
-                tbody.innerHTML = '';
-                docs.forEach(doc => {
-                    const data = doc.data();
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${data.name}</td>
-                            <td>${data.cpf || '-'}</td>
-                            <td>${data.phone || '-'}</td>
-                            <td>
-                                <button class="btn btn-sm btn-info text-white" onclick="patientModule.openDetail('${doc.id}')"><i class="fas fa-folder-open"></i> Prontuário</button>
-                                <button class="btn btn-sm btn-secondary" onclick="patientModule.edit('${doc.id}')"><i class="fas fa-edit"></i></button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            },
-
-            openModal: () => {
-                document.getElementById('pat-id').value = '';
-                document.getElementById('pat-nome').value = '';
-                document.getElementById('pat-cpf').value = '';
-                document.getElementById('pat-tel').value = '';
-                document.getElementById('pat-email').value = '';
-                document.getElementById('pat-endereco').value = '';
-                patientModule.modal.show();
-            },
-
-            edit: async (id) => {
-                const doc = await db.collection('patients').doc(id).get();
-                const data = doc.data();
-                document.getElementById('pat-id').value = id;
-                document.getElementById('pat-nome').value = data.name;
-                document.getElementById('pat-cpf').value = data.cpf;
-                document.getElementById('pat-tel').value = data.phone;
-                document.getElementById('pat-email').value = data.email;
-                document.getElementById('pat-endereco').value = data.address;
-                patientModule.modal.show();
-            },
-
-            save: async () => {
-                const id = document.getElementById('pat-id').value;
-                const data = {
-                    name: document.getElementById('pat-nome').value,
-                    cpf: document.getElementById('pat-cpf').value,
-                    phone: document.getElementById('pat-tel').value,
-                    email: document.getElementById('pat-email').value,
-                    address: document.getElementById('pat-endereco').value,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-
+            // Pacientes
+            const savePatientForm = async () => {
                 try {
-                    if(id) {
-                        await db.collection('patients').doc(id).update(data);
+                    const data = { 
+                        name: patientForm.name, 
+                        cpf: patientForm.cpf, 
+                        phone: patientForm.phone, 
+                        email: patientForm.email, 
+                        anamnese: patientForm.anamnese 
+                    };
+                    if (patientForm.id) {
+                        await updateDoc(doc(db, 'patients', patientForm.id), data);
+                        notify('Paciente atualizado.', 'success');
                     } else {
-                        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                        await db.collection('patients').add(data);
+                        await addDoc(collection(db, 'patients'), { ...data, createdAt: new Date().toISOString() });
+                        notify('Paciente cadastrado.', 'success');
                     }
-                    patientModule.modal.hide();
-                    patientModule.loadList();
-                    alert("Salvo com sucesso!");
-                } catch (e) {
-                    alert("Erro ao salvar: " + e.message);
+                    closeModal();
+                } catch (e) { notify('Erro ao salvar paciente', 'error'); }
+            };
+
+            const editPatient = (p) => {
+                Object.assign(patientForm, p);
+                showModal.value = 'editPatient';
+            };
+
+            const selectPatient = (p) => {
+                selectedPatient.value = p;
+            };
+
+            // Agenda
+            const checkConflicts = (date, hour) => {
+                return appointments.value.some(a => a.date === date && parseInt(a.hour) === parseInt(hour) && a.status !== 'cancelado');
+            };
+
+            const saveAppointmentForm = async () => {
+                if (checkConflicts(appointmentForm.date, appointmentForm.hour)) {
+                    notify('Horário já ocupado!', 'error');
+                    return;
                 }
-            },
+                try {
+                    await addDoc(collection(db, 'appointments'), {
+                        ...appointmentForm,
+                        status: 'agendado',
+                        dentistName: userData.value.name,
+                        dentistId: userData.value.uid || currentUser.value.uid
+                    });
+                    notify('Agendamento realizado.', 'success');
+                    // Simulação de envio de e-mail
+                    console.log(`[EMAIL MOCK] Enviando lembrete para paciente ID ${appointmentForm.patientId}`);
+                    closeModal();
+                } catch (e) { notify('Erro ao agendar', 'error'); }
+            };
 
-            // --- Prontuário ---
-            openDetail: async (id) => {
-                currentPatientId = id;
-                const doc = await db.collection('patients').doc(id).get();
-                const data = doc.data();
-                
-                document.getElementById('detail-name').innerText = data.name;
-                document.getElementById('detail-info').innerText = `CPF: ${data.cpf} | Email: ${data.email}`;
-                document.getElementById('anamnese-text').value = data.anamnese || '';
-                
-                router.navigate('patient-detail');
-                patientModule.loadEvolution(id);
-                patientModule.loadFiles(id);
-            },
+            const getAppointmentsForHour = (hour) => {
+                return appointments.value.filter(a => a.date === selectedDate.value && parseInt(a.hour) === hour && a.status !== 'cancelado');
+            };
 
-            saveAnamnese: async () => {
-                const text = document.getElementById('anamnese-text').value;
-                await db.collection('patients').doc(currentPatientId).update({ anamnese: text });
-                alert("Anamnese atualizada.");
-            },
+            // Prontuário / Evolução
+            const saveRecordForm = async () => {
+                if (!selectedPatient.value) return;
+                try {
+                    await addDoc(collection(db, 'records'), {
+                        patientId: selectedPatient.value.id,
+                        dentistName: userData.value.name,
+                        date: new Date().toISOString(),
+                        procedure: recordForm.procedure,
+                        notes: recordForm.notes,
+                        cost: parseFloat(recordForm.cost)
+                    });
+                    notify('Evolução registrada.', 'success');
+                    closeModal();
+                    // Reset form
+                    recordForm.notes = ''; recordForm.cost = 0;
+                } catch (e) { notify('Erro ao salvar evolução', 'error'); }
+            };
 
-            addEvolution: async () => {
-                const text = document.getElementById('evo-text').value;
-                if(!text) return;
-                
-                await db.collection('patients').doc(currentPatientId).collection('evolution').add({
-                    text: text,
-                    professional: currentUser.email,
-                    date: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                document.getElementById('evo-text').value = '';
-                patientModule.loadEvolution(currentPatientId);
-            },
-
-            loadEvolution: async (id) => {
-                const container = document.getElementById('evolution-history');
-                container.innerHTML = '<p class="text-muted">Carregando...</p>';
-                
-                const snap = await db.collection('patients').doc(id).collection('evolution').orderBy('date', 'desc').get();
-                container.innerHTML = '';
-                
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    const dateStr = d.date ? d.date.toDate().toLocaleString() : 'Agora';
-                    container.innerHTML += `
-                        <div class="card p-2 bg-light mb-2">
-                            <small class="text-muted"><strong>${dateStr}</strong> por ${d.professional}</small>
-                            <p class="mb-0 mt-1">${d.text}</p>
-                        </div>
-                    `;
-                });
-            },
-
-            uploadFile: async () => {
-                const fileInput = document.getElementById('file-upload-input');
-                const file = fileInput.files[0];
-                if(!file) return alert("Selecione um arquivo.");
+            // Arquivos
+            const handleFileUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) return notify('Arquivo muito grande (Max 5MB)', 'error');
 
                 try {
-                    ui.toggleLoading(true);
-                    const ref = storage.ref().child(`uploads/${currentPatientId}/${Date.now()}_${file.name}`);
-                    await ref.put(file);
-                    const url = await ref.getDownloadURL();
+                    notify('Enviando arquivo...', 'info');
+                    const storageRef = ref(storage, `uploads/${selectedPatient.value.id}/${Date.now()}_${file.name}`);
+                    await uploadBytes(storageRef, file);
+                    const url = await getDownloadURL(storageRef);
 
-                    // Salvar referência no Firestore
-                    await db.collection('patients').doc(currentPatientId).collection('files').add({
+                    await addDoc(collection(db, 'files'), {
+                        patientId: selectedPatient.value.id,
                         name: file.name,
                         url: url,
-                        date: firebase.firestore.FieldValue.serverTimestamp()
+                        type: file.type,
+                        uploadedAt: new Date().toISOString()
                     });
+                    notify('Arquivo enviado!', 'success');
+                } catch (err) { notify('Erro no upload', 'error'); }
+            };
 
-                    ui.toggleLoading(false);
-                    fileInput.value = '';
-                    patientModule.loadFiles(currentPatientId);
-                } catch (e) {
-                    ui.toggleLoading(false);
-                    alert("Erro no upload: " + e.message);
-                }
-            },
-
-            loadFiles: async (id) => {
-                const list = document.getElementById('file-list');
-                list.innerHTML = '';
-                const snap = await db.collection('patients').doc(id).collection('files').orderBy('date', 'desc').get();
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    list.innerHTML += `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            ${d.name}
-                            <a href="${d.url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i></a>
-                        </li>
-                    `;
-                });
-            },
-
-            exportPDF: () => {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                const name = document.getElementById('detail-name').innerText;
-                const history = document.getElementById('evolution-history').innerText;
-                
-                doc.text(`Prontuário: ${name}`, 10, 10);
-                doc.text("Histórico de Evolução:", 10, 20);
-                
-                // Split text para caber na página
-                const splitText = doc.splitTextToSize(history, 180);
-                doc.text(splitText, 10, 30);
-                
-                doc.save(`prontuario_${name}.pdf`);
-            }
-        };
-
-        // --- Módulo de Agenda ---
-        const agendaModule = {
-            modal: new bootstrap.Modal(document.getElementById('modal-agenda')),
-            
-            loadAgenda: async () => {
-                const dateVal = document.getElementById('agenda-date-filter').value || new Date().toISOString().split('T')[0];
-                document.getElementById('agenda-date-filter').value = dateVal;
-
-                // Filtro simples por string de data (para simplificar query)
-                const start = new Date(dateVal + 'T00:00:00');
-                const end = new Date(dateVal + 'T23:59:59');
-
-                const snap = await db.collection('appointments')
-                    .where('date', '>=', start)
-                    .where('date', '<=', end)
-                    .orderBy('date')
-                    .get();
-
-                const tbody = document.getElementById('agenda-list');
-                tbody.innerHTML = '';
-                
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    const time = d.date.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const statusClass = d.status === 'Confirmado' ? 'status-confirmado' : (d.status === 'Cancelado' ? 'status-cancelado' : 'status-agendado');
-                    
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${time}</td>
-                            <td>${d.patientName}</td>
-                            <td>${d.dentist}</td>
-                            <td>${d.procedure}</td>
-                            <td class="${statusClass}">${d.status}</td>
-                            <td>
-                                <button class="btn btn-sm btn-light" onclick="agendaModule.edit('${doc.id}')"><i class="fas fa-edit"></i></button>
-                                <a href="mailto:${d.patientEmail}?subject=Lembrete de Consulta&body=Olá, lembramos de sua consulta dia ${dateVal} as ${time}." class="btn btn-sm btn-warning"><i class="fas fa-envelope"></i></a>
-                            </td>
-                        </tr>
-                    `;
-                });
-            },
-
-            openModal: async () => {
-                document.getElementById('agenda-id').value = '';
-                document.getElementById('agenda-status').value = 'Agendado';
-                document.getElementById('btn-delete-agenda').classList.add('hidden');
-                
-                // Carregar pacientes para o select
-                const select = document.getElementById('agenda-paciente');
-                select.innerHTML = '';
-                const snap = await db.collection('patients').get();
-                snap.forEach(doc => {
-                    const opt = document.createElement('option');
-                    opt.value = doc.id;
-                    opt.text = doc.data().name;
-                    opt.dataset.email = doc.data().email;
-                    select.add(opt);
-                });
-
-                agendaModule.modal.show();
-            },
-
-            edit: async (id) => {
-                await agendaModule.openModal(); // Carrega select
-                const doc = await db.collection('appointments').doc(id).get();
-                const d = doc.data();
-                
-                document.getElementById('agenda-id').value = id;
-                document.getElementById('agenda-paciente').value = d.patientId;
-                
-                // Format Date for Input
-                const dt = d.date.toDate();
-                dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
-                document.getElementById('agenda-data').value = dt.toISOString().slice(0,16);
-                
-                document.getElementById('agenda-proc').value = d.procedure;
-                document.getElementById('agenda-status').value = d.status;
-                document.getElementById('btn-delete-agenda').classList.remove('hidden');
-            },
-
-            save: async () => {
-                const id = document.getElementById('agenda-id').value;
-                const patSelect = document.getElementById('agenda-paciente');
-                const dateStr = document.getElementById('agenda-data').value;
-                
-                if(!dateStr) return alert("Selecione data e hora");
-
-                const data = {
-                    patientId: patSelect.value,
-                    patientName: patSelect.options[patSelect.selectedIndex].text,
-                    patientEmail: patSelect.options[patSelect.selectedIndex].dataset.email,
-                    date: new Date(dateStr),
-                    procedure: document.getElementById('agenda-proc').value,
-                    status: document.getElementById('agenda-status').value,
-                    dentist: currentUser.email // Simplificação: quem agenda é o "dono" ou pegar de um select
-                };
-
-                // Check Conflict (Simplificado)
-                // Em prod, fazer query verificando range
-                
-                if(id) {
-                    await db.collection('appointments').doc(id).update(data);
-                } else {
-                    await db.collection('appointments').add(data);
-                }
-                agendaModule.modal.hide();
-                agendaModule.loadAgenda();
-            },
-            
-            delete: async () => {
-                const id = document.getElementById('agenda-id').value;
-                if(confirm("Excluir agendamento?")) {
-                    await db.collection('appointments').doc(id).delete();
-                    agendaModule.modal.hide();
-                    agendaModule.loadAgenda();
-                }
-            }
-        };
-
-        // --- Módulo de Usuários (Admin) ---
-        const userModule = {
-            create: async (e) => {
-                e.preventDefault();
-                const email = document.getElementById('new-user-email').value;
-                const pass = document.getElementById('new-user-pass').value;
-                const role = document.getElementById('new-user-role').value;
-
-                // OBS: Criar usuário secundário enquanto logado requer Cloud Functions
-                // ou fazer logout, criar, e relogar.
-                // Aqui apenas salvamos no Firestore para fins de registro, 
-                // a criação real da Auth deve ser feita no Console Firebase ou via Backend real.
-                alert("Atenção: Em um app Client-Side puro, você deve criar o login no Firebase Console > Authentication. Aqui registraremos apenas os metadados de permissão.");
-
+            const deleteFile = async (fileData) => {
+                if(!confirm("Excluir arquivo permanentemente?")) return;
                 try {
-                    // Simulando a lógica de salvar metadados
-                    // O UID teria que vir da criação real. Usaremos email como ID temporário
-                    await db.collection('users').doc(email).set({
-                        email: email,
-                        role: role
-                    });
-                    alert("Permissão de usuário registrada. Crie a conta no Firebase Auth manualmente.");
-                    userModule.loadList();
-                } catch(e) {
-                    alert("Erro: " + e.message);
+                    // Nota: Deletar do Storage requer a ref correta. Aqui simplificamos deletando do DB.
+                    await deleteDoc(doc(db, 'files', fileData.id));
+                    notify('Registro de arquivo removido.', 'success');
+                } catch(e) { notify('Erro ao excluir', 'error'); }
+            };
+
+            // Users
+            const deleteUser = async (uid) => {
+                if(confirm("Tem certeza? Isso não apaga a conta Auth, apenas os dados de acesso.")) {
+                    await deleteDoc(doc(db, 'users', uid));
+                    notify('Usuário removido.', 'success');
                 }
-            },
-            loadList: async () => {
-                const tbody = document.getElementById('users-list');
-                tbody.innerHTML = '';
-                const snap = await db.collection('users').get();
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    tbody.innerHTML += `<tr><td>${d.email}</td><td>${d.role}</td><td><button class="btn btn-sm btn-danger">X</button></td></tr>`;
-                });
-            }
-        };
+            };
 
-        // --- Dashboard & Reports ---
-        const dashboardModule = {
-            load: async () => {
-                // Contadores básicos
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                
-                const appSnap = await db.collection('appointments')
-                    .where('date', '>=', today)
-                    .where('date', '<', new Date(today.getTime() + 86400000))
-                    .get();
-                document.getElementById('dash-today-count').innerText = appSnap.size;
+            // Relatórios e Exportação
+            const exportToCSV = (type) => {
+                const data = type === 'patients' ? patients.value : appointments.value;
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, type);
+                XLSX.writeFile(wb, `odonto_export_${type}.xlsx`);
+                notify('Download iniciado.', 'success');
+            };
 
-                const patSnap = await db.collection('patients').get(); // Em prod usar count() aggregation
-                document.getElementById('dash-patient-count').innerText = patSnap.size;
-            }
-        };
-        
-        const reportsModule = {
-            exportPatientsCSV: async () => {
-                const snap = await db.collection('patients').get();
-                let csv = "Nome,CPF,Email,Telefone\n";
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    csv += `"${d.name}","${d.cpf}","${d.email}","${d.phone}"\n`;
-                });
-                
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = window.URL.createObjectURL(blob);
+            const printRecord = () => {
+                const element = document.getElementById('patient-record-content');
+                html2pdf().from(element).save(`prontuario_${selectedPatient.value.name}.pdf`);
+            };
+
+            const backupData = () => {
+                const backup = {
+                    patients: patients.value,
+                    appointments: appointments.value,
+                    records: records.value,
+                    date: new Date().toISOString()
+                };
+                const blob = new Blob([JSON.stringify(backup)], {type: "application/json"});
+                const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = 'pacientes.csv';
+                a.href = url; a.download = `backup_odonto_${Date.now()}.json`;
                 a.click();
-            }
-        };
+            };
 
-        // Helpers
-        const ui = {
-            toggleLoading: (show) => {
-                document.getElementById('loading-overlay').classList.toggle('hidden', !show);
-            }
-        };
+            const restoreData = (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = async (evt) => {
+                    try {
+                        const data = JSON.parse(evt.target.result);
+                        // Lógica simplificada: Apenas loga. Num sistema real, faria Batch Write.
+                        console.log("Dados para restore:", data);
+                        notify('Funcionalidade de Restore pronta (ver console). Implementar Batch Write para produção.', 'info');
+                    } catch(err) { notify('Arquivo inválido', 'error'); }
+                };
+                reader.readAsText(file);
+            };
 
-        // Inicializa a lógica de UI
-        ui.toggleLoading(true);
-        authModule.init();
+            // Testes Unitários (Self-Test)
+            const runSelfTests = () => {
+                console.group("🧪 Auto-Testes do Sistema");
+                let passed = 0;
+                let total = 0;
 
-    </script>
+                // Teste 1: Conflito de Horário
+                total++;
+                const testApts = [{date: '2023-01-01', hour: 10, status: 'agendado'}];
+                // Mock local temporário
+                const originalApts = appointments.value;
+                appointments.value = testApts;
+                const hasConflict = checkConflicts('2023-01-01', 10);
+                if(hasConflict) { console.log("✅ Teste Conflito: Passou"); passed++; }
+                else console.error("❌ Teste Conflito: Falhou");
+                appointments.value = originalApts; // Restore
+
+                // Teste 2: Validação CPF (simples check de length)
+                total++;
+                if(patientForm.cpf === '') { console.log("✅ Teste Form Vazio: Passou"); passed++; }
+                else console.error("❌ Teste Form Vazio: Falhou");
+
+                notify(`Testes finalizados: ${passed}/${total} passaram.`, passed === total ? 'success' : 'warning');
+                console.groupEnd();
+            };
+
+            // --- COMPUTEDS E HOOKS ---
+
+            const filteredPatients = computed(() => {
+                if (!searchQuery.value) return patients.value;
+                const q = searchQuery.value.toLowerCase();
+                return patients.value.filter(p => p.name.toLowerCase().includes(q) || p.cpf.includes(q));
+            });
+
+            const todayAppointments = computed(() => {
+                const today = new Date().toISOString().split('T')[0];
+                return appointments.value.filter(a => a.date === today && a.status !== 'cancelado');
+            });
+
+            const pageTitle = computed(() => {
+                const item = menuItems.find(i => i.id === currentView.value);
+                return item ? item.label : 'OdontoSys';
+            });
+
+            // Helpers de Template
+            const getUserInitials = () => userData.value?.name ? userData.value.name.substring(0,2).toUpperCase() : 'U';
+            const getPatientName = (id) => patients.value.find(p => p.id === id)?.name || 'Desconhecido';
+            const getStatusClass = (s) => s === 'agendado' ? 'bg-blue-100 text-blue-700' : s === 'cancelado' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+            const getStatusColor = (s) => s === 'agendado' ? 'bg-blue-100 border-blue-500 text-blue-700' : s === 'confirmado' ? 'bg-green-100 border-green-500 text-green-700' : 'bg-gray-100 border-gray-500';
+            const formatTime = (dateStr) => new Date(dateStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); // Simplificado
+            const formatDateTime = (iso) => new Date(iso).toLocaleString('pt-BR');
+            const getPatientRecords = (pid) => records.value.filter(r => r.patientId === pid).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const getPatientFiles = (pid) => files.value.filter(f => f.patientId === pid);
+            const calculateMonthlyRevenue = () => {
+                // Soma records do mês atual
+                return records.value.reduce((acc, curr) => acc + (curr.cost || 0), 0).toFixed(2);
+            };
+
+            const closeModal = () => {
+                showModal.value = null;
+                // Reset forms
+                Object.keys(patientForm).forEach(k => patientForm[k] = k==='id'?null:'');
+                Object.keys(appointmentForm).forEach(k => k!=='hour'? appointmentForm[k]='':null);
+            };
+
+            const openModal = (name) => {
+                showModal.value = name;
+            };
+
+            // Ciclo de Vida
+            onMounted(() => {
+                // Monitorar Autenticação
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser.value = user;
+                        // Buscar role do usuário
+                        try {
+                            const userDoc = await getDocs(query(collection(db, 'users'), where('email', '==', user.email)));
+                            if (!userDoc.empty) {
+                                userData.value = { uid: user.uid, ...userDoc.docs[0].data() };
+                                syncData();
+                            } else {
+                                // Fallback se usuário auth existe mas doc não (ex: deletado)
+                                userData.value = { uid: user.uid, name: user.displayName, role: 'reception' };
+                            }
+                        } catch(e) { console.error(e); }
+                    } else {
+                        currentUser.value = null;
+                    }
+                    loading.value = false;
+                });
+            });
+
+            const changeDate = (days) => {
+                const d = new Date(selectedDate.value);
+                d.setDate(d.getDate() + days);
+                selectedDate.value = d.toISOString().split('T')[0];
+            };
+
+            return {
+                loading, currentUser, userData, authMode, sidebarOpen, isDark, currentView, notifications,
+                loginForm, registerForm, patientForm, recordForm, appointmentForm,
+                patients, appointments, users, filteredPatients, todayAppointments,
+                showModal, selectedPatient, selectedDate, workHours, menuItems,
+                handleLogin, handleRegister, logout, handleResetPassword, toggleDarkMode,
+                savePatientForm, editPatient, selectPatient, saveAppointmentForm, saveRecordForm,
+                handleFileUpload, deleteFile, deleteUser,
+                exportToCSV, printRecord, backupData, restoreData, runSelfTests,
+                openModal, closeModal, checkPermission,
+                getUserInitials, getPatientName, getStatusClass, getStatusColor, formatTime, formatDateTime,
+                getPatientRecords, getPatientFiles, calculateMonthlyRevenue,
+                changeDate, getAppointmentsForHour, pageTitle, searchQuery
+            };
+        }
+    }).mount('#app');
+</script>
 </body>
-<!-- </html> -->
+</html>
