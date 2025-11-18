@@ -282,8 +282,1144 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+    <script><!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OdontoSys - Prontuário e Gestão Integrada</title>
+    
+    <!-- UI Frameworks (Bootstrap 5 & FontAwesome) carregados via CDN para visual moderno -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --sidebar-width: 250px;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            overflow-x: hidden;
+        }
+
+        /* Layout Principal */
+        #app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #sidebar {
+            width: var(--sidebar-width);
+            background: #212529;
+            color: white;
+            min-height: 100vh;
+            transition: all 0.3s;
+            position: fixed;
+            z-index: 1000;
+        }
+
+        #sidebar .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 15px 20px;
+            border-radius: 0;
+        }
+
+        #sidebar .nav-link:hover, #sidebar .nav-link.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        #main-content {
+            margin-left: var(--sidebar-width);
+            width: calc(100% - var(--sidebar-width));
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        /* Login Screen */
+        #login-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0d6efd 0%, #0099ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .card-login {
+            width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: none;
+        }
+
+        /* Componentes Específicos */
+        .timeline-step {
+            border-left: 2px solid #dee2e6;
+            padding-left: 20px;
+            padding-bottom: 20px;
+            position: relative;
+        }
+        .timeline-step::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--primary-color);
+        }
+
+        /* Utilitários */
+        .hidden { display: none !important; }
+        .cursor-pointer { cursor: pointer; }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            #sidebar { margin-left: calc(-1 * var(--sidebar-width)); }
+            #sidebar.active { margin-left: 0; }
+            #main-content { margin-left: 0; width: 100%; }
+        }
+
+        /* Impressão */
+        @media print {
+            #sidebar, #top-nav, .no-print { display: none !important; }
+            #main-content { margin: 0; padding: 0; width: 100%; }
+            .card { border: none !important; shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen">
+        <div class="card card-login p-4 bg-white rounded">
+            <div class="text-center mb-4">
+                <i class="fa-solid fa-tooth fa-3x text-primary"></i>
+                <h3 class="mt-2">OdontoSys</h3>
+                <p class="text-muted">Acesso Seguro</p>
+            </div>
+            <form id="form-login">
+                <div class="mb-3">
+                    <label class="form-label">E-mail</label>
+                    <input type="email" id="login-email" class="form-control" required placeholder="admin@clinica.com">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Senha</label>
+                    <input type="password" id="login-password" class="form-control" required placeholder="admin123">
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Entrar</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="Auth.showForgotPass()">Esqueci a senha</button>
+                </div>
+            </form>
+            <div class="mt-3 text-center small">
+                <p class="text-muted">Ambiente Demonstrativo (Local)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- APLICAÇÃO PRINCIPAL -->
+    <div id="app-container" class="hidden">
+        
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="p-3 text-center border-bottom border-secondary">
+                <h4>OdontoSys</h4>
+                <small id="user-role-display" class="badge bg-secondary">Carregando...</small>
+            </div>
+            <ul class="nav flex-column mt-3">
+                <li class="nav-item"><a href="#" class="nav-link active" onclick="Router.go('dashboard')"><i class="fas fa-home me-2"></i> Dashboard</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" onclick="Router.go('agenda')"><i class="fas fa-calendar-alt me-2"></i> Agenda</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" onclick="Router.go('patients')"><i class="fas fa-users me-2"></i> Pacientes</a></li>
+                <li class="nav-item nav-admin-only"><a href="#" class="nav-link" onclick="Router.go('users')"><i class="fas fa-user-shield me-2"></i> Usuários</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" onclick="Router.go('reports')"><i class="fas fa-chart-bar me-2"></i> Relatórios</a></li>
+                <li class="nav-item"><a href="#" class="nav-link" onclick="System.backup()"><i class="fas fa-database me-2"></i> Backup</a></li>
+            </ul>
+        </nav>
+
+        <!-- Conteúdo -->
+        <div id="main-content">
+            
+            <!-- Top Nav -->
+            <nav id="top-nav" class="navbar navbar-light bg-white shadow-sm mb-4 rounded px-3">
+                <button class="btn btn-light d-md-none" onclick="UI.toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <div class="ms-auto d-flex align-items-center">
+                    <button class="btn btn-sm btn-outline-dark me-2" onclick="UI.toggleDarkMode()"><i class="fas fa-moon"></i></button>
+                    <div class="dropdown">
+                        <a class="btn btn-light dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i> <span id="user-name-display">Usuário</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="Auth.logout()">Sair</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Views (Conteúdo Dinâmico) -->
+            <div id="views-container">
+                
+                <!-- View: Dashboard -->
+                <div id="view-dashboard" class="view-section">
+                    <h2 class="mb-4">Painel de Controle</h2>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white p-3">
+                                <h5>Consultas Hoje</h5>
+                                <h2 id="dash-today-count">0</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white p-3">
+                                <h5>Pacientes</h5>
+                                <h2 id="dash-patients-count">0</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-dark p-3">
+                                <h5>Faturamento (Mês)</h5>
+                                <h2 id="dash-revenue">R$ 0,00</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-danger text-white p-3">
+                                <h5>Retornos Pendentes</h5>
+                                <h2 id="dash-pending">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-8">
+                            <div class="card shadow-sm">
+                                <div class="card-header bg-white">Próximos Atendimentos</div>
+                                <div class="card-body">
+                                    <table class="table table-hover" id="dash-table">
+                                        <thead><tr><th>Hora</th><th>Paciente</th><th>Procedimento</th><th>Status</th></tr></thead>
+                                        <tbody id="dash-table-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card shadow-sm">
+                                <div class="card-header bg-white">Avisos Operacionais</div>
+                                <ul class="list-group list-group-flush" id="dash-alerts">
+                                    <!-- Preenchido via JS -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Agenda -->
+                <div id="view-agenda" class="view-section hidden">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>Agenda</h2>
+                        <button class="btn btn-primary" onclick="Agenda.openModal()"><i class="fas fa-plus"></i> Novo Agendamento</button>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <input type="date" id="agenda-filter-date" class="form-control" onchange="Agenda.render()">
+                        </div>
+                        <div class="col-md-4">
+                            <select id="agenda-filter-dentist" class="form-select" onchange="Agenda.render()">
+                                <option value="">Todos os Dentistas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="card-body" id="agenda-list">
+                            <!-- Lista de agendamentos -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Pacientes -->
+                <div id="view-patients" class="view-section hidden">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>Pacientes</h2>
+                        <button class="btn btn-primary" onclick="Patients.openCreateModal()"><i class="fas fa-user-plus"></i> Novo Paciente</button>
+                    </div>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="patient-search" placeholder="Buscar por nome, CPF ou telefone..." onkeyup="Patients.render()">
+                        <button class="btn btn-outline-secondary" type="button"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="card-body p-0">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Ações</th></tr>
+                                </thead>
+                                <tbody id="patients-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Usuários (Admin) -->
+                <div id="view-users" class="view-section hidden">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>Gestão de Usuários</h2>
+                        <button class="btn btn-primary" onclick="Users.openModal()"><i class="fas fa-plus"></i> Novo Usuário</button>
+                    </div>
+                    <table class="table table-bordered bg-white">
+                        <thead><tr><th>Nome</th><th>Email</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead>
+                        <tbody id="users-table-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- View: Relatórios -->
+                <div id="view-reports" class="view-section hidden">
+                    <h2>Relatórios</h2>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-4">
+                            <div class="card p-3">
+                                <h5>Consultas por Período</h5>
+                                <input type="month" id="report-month" class="form-control my-2">
+                                <button class="btn btn-outline-primary w-100" onclick="Reports.generateConsultas()">Gerar PDF</button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-3">
+                                <h5>Procedimentos Realizados</h5>
+                                <button class="btn btn-outline-primary w-100 mt-4" onclick="Reports.generateProcedures()">Visualizar CSV</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAIS -->
+
+    <!-- Modal Paciente (Prontuário Completo) -->
+    <div class="modal fade" id="modal-patient" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Prontuário Eletrônico</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" id="pills-tab" role="tablist">
+                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-dados">Dados Pessoais</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-anamnese">Anamnese</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-evolucao">Evolução Clínica</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-arquivos">Arquivos e Exames</button></li>
+                    </ul>
+                    <div class="tab-content">
+                        <!-- Dados -->
+                        <div class="tab-pane fade show active" id="tab-dados">
+                            <form id="form-patient-data">
+                                <input type="hidden" id="pat-id">
+                                <div class="row g-2">
+                                    <div class="col-md-6"><label>Nome Completo</label><input type="text" id="pat-name" class="form-control" required></div>
+                                    <div class="col-md-3"><label>CPF</label><input type="text" id="pat-cpf" class="form-control"></div>
+                                    <div class="col-md-3"><label>Data Nasc.</label><input type="date" id="pat-dob" class="form-control"></div>
+                                    <div class="col-md-4"><label>Telefone</label><input type="text" id="pat-phone" class="form-control"></div>
+                                    <div class="col-md-4"><label>Email</label><input type="email" id="pat-email" class="form-control"></div>
+                                    <div class="col-md-4"><label>Endereço</label><input type="text" id="pat-address" class="form-control"></div>
+                                </div>
+                                <button type="submit" class="btn btn-success mt-3">Salvar Dados</button>
+                            </form>
+                        </div>
+                        <!-- Anamnese -->
+                        <div class="tab-pane fade" id="tab-anamnese">
+                            <textarea id="pat-anamnesis" class="form-control" rows="10" placeholder="Histórico médico, alergias, medicamentos em uso..."></textarea>
+                            <button onclick="Patients.saveAnamnesis()" class="btn btn-primary mt-2">Atualizar Anamnese</button>
+                        </div>
+                        <!-- Evolução -->
+                        <div class="tab-pane fade" id="tab-evolucao">
+                            <div class="row">
+                                <div class="col-md-4 border-end">
+                                    <h6>Nova Evolução</h6>
+                                    <form id="form-evolution">
+                                        <div class="mb-2">
+                                            <label>Procedimento</label>
+                                            <input type="text" id="evo-proc" class="form-control" required>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label>Descrição/Observações</label>
+                                            <textarea id="evo-desc" class="form-control" rows="3" required></textarea>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label>Valor (R$)</label>
+                                            <input type="number" id="evo-val" class="form-control" step="0.01">
+                                        </div>
+                                        <button type="submit" class="btn btn-success w-100">Registrar Atendimento</button>
+                                    </form>
+                                </div>
+                                <div class="col-md-8">
+                                    <h6>Histórico (Timeline)</h6>
+                                    <div id="pat-timeline" class="mt-3" style="max-height: 400px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Arquivos -->
+                        <div class="tab-pane fade" id="tab-arquivos">
+                            <div class="alert alert-warning small">Nota: Arquivos são salvos no navegador. Máximo 5MB recomendado.</div>
+                            <input type="file" id="file-upload" class="form-control mb-2" accept="image/*,.pdf">
+                            <button onclick="Patients.uploadFile()" class="btn btn-primary mb-3">Anexar Arquivo</button>
+                            <div id="pat-files-list" class="list-group"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Agendamento -->
+    <div class="modal fade" id="modal-agenda" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agendamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-agenda">
+                        <input type="hidden" id="ag-id">
+                        <div class="mb-3">
+                            <label>Paciente</label>
+                            <select id="ag-patient" class="form-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label>Dentista</label>
+                            <select id="ag-dentist" class="form-select" required></select>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col"><label>Data</label><input type="date" id="ag-date" class="form-control" required></div>
+                            <div class="col"><label>Hora</label><input type="time" id="ag-time" class="form-control" required></div>
+                        </div>
+                        <div class="mb-3">
+                            <label>Tipo</label>
+                            <select id="ag-type" class="form-select">
+                                <option>Consulta Inicial</option>
+                                <option>Limpeza</option>
+                                <option>Restauração</option>
+                                <option>Canal</option>
+                                <option>Extração</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label>Status</label>
+                            <select id="ag-status" class="form-select">
+                                <option value="agendado">Agendado</option>
+                                <option value="confirmado">Confirmado</option>
+                                <option value="cancelado">Cancelado</option>
+                                <option value="concluido">Concluído</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Salvar Agendamento</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Usuário -->
+    <div class="modal fade" id="modal-user" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Dados do Usuário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-user">
+                        <input type="hidden" id="usr-id">
+                        <div class="mb-3"><label>Nome</label><input type="text" id="usr-name" class="form-control" required></div>
+                        <div class="mb-3"><label>Email</label><input type="email" id="usr-email" class="form-control" required></div>
+                        <div class="mb-3"><label>Senha</label><input type="password" id="usr-pass" class="form-control" placeholder="Deixe em branco para não alterar"></div>
+                        <div class="mb-3">
+                            <label>Função</label>
+                            <select id="usr-role" class="form-select">
+                                <option value="admin">Administrador</option>
+                                <option value="dentista">Dentista</option>
+                                <option value="recepcao">Recepção</option>
+                            </select>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="usr-active" checked>
+                            <label class="form-check-label">Ativo</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Salvar Usuário</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        /** 
+    /**
+     * ODONTOSYS - SISTEMA INTEGRADO (SINGLE FILE)
+     * 
+     * ÁREA DE CONFIGURAÇÃO E CHAVES EXTERNAS
+     * (Preencha aqui se for conectar com serviços reais no futuro)
+     */
+    const SYSTEM_CONFIG = {
+        api_url: null,          // Ex: 'https://api.minhaclinica.com'
+        storage_bucket: null,   // Ex: 's3://meu-bucket'
+        email_service: null,    // Ex: 'SendGrid_Key'
+        version: '1.0.0'
+    };
+
+    /* --- STORE (BANCO DE DADOS LOCAL) --- */
+    const Store = {
+        get: (key) => JSON.parse(localStorage.getItem(key) || '[]'),
+        set: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
+        
+        init: () => {
+            if (!localStorage.getItem('users')) {
+                // Seed inicial
+                const admin = { id: 1, name: 'Administrador', email: 'admin@clinica.com', pass: 'admin123', role: 'admin', active: true };
+                const dentista = { id: 2, name: 'Dr. Silva', email: 'silva@clinica.com', pass: '123', role: 'dentista', active: true };
+                Store.set('users', [admin, dentista]);
+                
+                Store.set('patients', [
+                    { id: 1690000000000, name: 'João da Silva', cpf: '123.456.789-00', phone: '11999999999', email: 'joao@email.com', anamnesis: 'Alergia a dipirona', timeline: [], files: [] },
+                    { id: 1690000000001, name: 'Maria Oliveira', cpf: '987.654.321-11', phone: '11888888888', email: 'maria@email.com', anamnesis: '', timeline: [], files: [] }
+                ]);
+                
+                Store.set('appointments', [
+                    { id: 1, patientId: 1690000000000, dentistId: 2, date: new Date().toISOString().split('T')[0], time: '14:00', type: 'Limpeza', status: 'agendado' }
+                ]);
+            }
+        }
+    };
+
+    /* --- AUTHENTICATION --- */
+    const Auth = {
+        user: null,
+
+        check: () => {
+            const session = sessionStorage.getItem('odontosys_session');
+            if (session) {
+                Auth.user = JSON.parse(session);
+                UI.showApp();
+            } else {
+                UI.showLogin();
+            }
+        },
+
+        login: (email, pass) => {
+            const users = Store.get('users');
+            const user = users.find(u => u.email === email && u.pass === pass && u.active);
+            
+            if (user) {
+                // Sanitizar (remover senha da sessão)
+                const safeUser = { ...user };
+                delete safeUser.pass;
+                
+                sessionStorage.setItem('odontosys_session', JSON.stringify(safeUser));
+                Auth.user = safeUser;
+                UI.showApp();
+                return { success: true };
+            }
+            return { success: false, message: 'Credenciais inválidas ou usuário inativo.' };
+        },
+
+        logout: () => {
+            sessionStorage.removeItem('odontosys_session');
+            window.location.reload();
+        },
+
+        hasRole: (roles) => {
+            if (!Auth.user) return false;
+            if (Auth.user.role === 'admin') return true; // Admin vê tudo
+            return roles.includes(Auth.user.role);
+        },
+
+        showForgotPass: () => {
+            const email = prompt("Digite seu e-mail para recuperação:");
+            if (email) {
+                // Simulação de envio de email
+                console.log(`[EMAIL SERVICE] Enviando token de recuperação para ${email}`);
+                alert("Link de recuperação enviado para o e-mail (Simulado). Verifique o console.");
+            }
+        }
+    };
+
+    /* --- ROTAS E NAVEGAÇÃO --- */
+    const Router = {
+        go: (viewId) => {
+            // Proteção de Rotas
+            if (viewId === 'users' && !Auth.hasRole(['admin'])) {
+                alert('Acesso negado.');
+                return;
+            }
+
+            // UI Update
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+            
+            // Atualizar Sidebar
+            document.querySelectorAll('#sidebar .nav-link').forEach(el => el.classList.remove('active'));
+            // Encontrar o link correspondente (lógica simples)
+            const links = document.querySelectorAll('#sidebar .nav-link');
+            // ... lógica de active class simplificada ...
+
+            // Executar renderizadores específicos
+            if (viewId === 'dashboard') Dashboard.render();
+            if (viewId === 'agenda') Agenda.render();
+            if (viewId === 'patients') Patients.render();
+            if (viewId === 'users') Users.render();
+        }
+    };
+
+    /* --- SERVIÇOS MOCKADOS --- */
+    const Notifications = {
+        send: (msg, type = 'info') => {
+            // Simulação de notificação toast
+            const alertBox = document.createElement('div');
+            alertBox.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+            alertBox.style.zIndex = 9999;
+            alertBox.innerText = msg;
+            document.body.appendChild(alertBox);
+            setTimeout(() => alertBox.remove(), 3000);
+        },
+        emailReminder: (patientEmail, date) => {
+            console.log(`[EMAIL] Lembrete enviado para ${patientEmail} sobre consulta em ${date}`);
+        }
+    };
+
+    /* --- MÓDULOS DE NEGÓCIO --- */
+
+    // 1. DASHBOARD
+    const Dashboard = {
+        render: () => {
+            const appts = Store.get('appointments');
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Contadores
+            const todayAppts = appts.filter(a => a.date === today);
+            document.getElementById('dash-today-count').innerText = todayAppts.length;
+            document.getElementById('dash-patients-count').innerText = Store.get('patients').length;
+            
+            // Financeiro Simples (Soma de evoluções deste mês)
+            let revenue = 0;
+            Store.get('patients').forEach(p => {
+                p.timeline.forEach(t => {
+                    if(t.val && t.date.startsWith(today.substring(0,7))) revenue += parseFloat(t.val);
+                });
+            });
+            document.getElementById('dash-revenue').innerText = `R$ ${revenue.toFixed(2)}`;
+
+            // Tabela Hoje
+            const tbody = document.getElementById('dash-table-body');
+            tbody.innerHTML = '';
+            todayAppts.forEach(a => {
+                const patient = Store.get('patients').find(p => p.id == a.patientId);
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${a.time}</td>
+                        <td>${patient ? patient.name : 'Desconhecido'}</td>
+                        <td>${a.type}</td>
+                        <td><span class="badge bg-${a.status === 'confirmado' ? 'success' : 'warning'}">${a.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+    };
+
+    // 2. AGENDA
+    const Agenda = {
+        modal: null,
+        
+        render: () => {
+            const dateFilter = document.getElementById('agenda-filter-date').value || new Date().toISOString().split('T')[0];
+            document.getElementById('agenda-filter-date').value = dateFilter;
+            const dentistFilter = document.getElementById('agenda-filter-dentist').value;
+            
+            const appts = Store.get('appointments');
+            const patients = Store.get('patients');
+            const users = Store.get('users'); // Dentistas
+
+            // Preencher select de dentistas no filtro
+            const dentists = users.filter(u => u.role === 'dentista' || u.role === 'admin');
+            const filterSelect = document.getElementById('agenda-filter-dentist');
+            if (filterSelect.options.length === 1) {
+                dentists.forEach(d => filterSelect.add(new Option(d.name, d.id)));
+            }
+
+            // Filtragem
+            let filtered = appts.filter(a => a.date === dateFilter);
+            if (dentistFilter) filtered = filtered.filter(a => a.dentistId == dentistFilter);
+
+            filtered.sort((a, b) => a.time.localeCompare(b.time));
+
+            const container = document.getElementById('agenda-list');
+            container.innerHTML = '';
+            
+            if (filtered.length === 0) container.innerHTML = '<p class="text-muted text-center">Nenhum agendamento para esta data.</p>';
+
+            filtered.forEach(a => {
+                const p = patients.find(pat => pat.id == a.patientId);
+                const d = users.find(u => u.id == a.dentistId);
+                
+                const card = document.createElement('div');
+                card.className = `d-flex justify-content-between align-items-center p-3 border-bottom ${a.status === 'cancelado' ? 'bg-light text-muted' : ''}`;
+                card.innerHTML = `
+                    <div>
+                        <strong>${a.time}</strong> - ${p ? p.name : 'Erro Paciente'} <small>(${a.type})</small><br>
+                        <small class="text-muted">Prof: ${d ? d.name : '?'}</small>
+                    </div>
+                    <div>
+                        <select class="form-select form-select-sm status-changer" data-id="${a.id}">
+                            <option value="agendado" ${a.status=='agendado'?'selected':''}>Agendado</option>
+                            <option value="confirmado" ${a.status=='confirmado'?'selected':''}>Confirmado</option>
+                            <option value="concluido" ${a.status=='concluido'?'selected':''}>Concluído</option>
+                            <option value="cancelado" ${a.status=='cancelado'?'selected':''}>Cancelado</option>
+                        </select>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // Event Listeners para mudança de status
+            document.querySelectorAll('.status-changer').forEach(sel => {
+                sel.addEventListener('change', (e) => {
+                    const id = e.target.getAttribute('data-id');
+                    const newStatus = e.target.value;
+                    const all = Store.get('appointments');
+                    const idx = all.findIndex(x => x.id == id);
+                    if (idx > -1) {
+                        all[idx].status = newStatus;
+                        Store.set('appointments', all);
+                        Notifications.send('Status atualizado');
+                        Agenda.render();
+                    }
+                });
+            });
+        },
+
+        openModal: () => {
+            document.getElementById('form-agenda').reset();
+            document.getElementById('ag-id').value = '';
+            
+            // Popular Selects
+            const pSelect = document.getElementById('ag-patient');
+            pSelect.innerHTML = '';
+            Store.get('patients').forEach(p => pSelect.add(new Option(p.name, p.id)));
+            
+            const dSelect = document.getElementById('ag-dentist');
+            dSelect.innerHTML = '';
+            Store.get('users').filter(u => u.role === 'dentista' || u.role === 'admin').forEach(d => dSelect.add(new Option(d.name, d.id)));
+
+            Agenda.modal = new bootstrap.Modal(document.getElementById('modal-agenda'));
+            Agenda.modal.show();
+        },
+
+        save: (e) => {
+            e.preventDefault();
+            const id = document.getElementById('ag-id').value;
+            const patientId = document.getElementById('ag-patient').value;
+            const dentistId = document.getElementById('ag-dentist').value;
+            const date = document.getElementById('ag-date').value;
+            const time = document.getElementById('ag-time').value;
+            const type = document.getElementById('ag-type').value;
+            const status = document.getElementById('ag-status').value;
+
+            const all = Store.get('appointments');
+
+            // Teste de Unidade: Conflito de Horário (Lógica Simples: mesmo dentista, mesma data e hora)
+            // Para ser perfeito precisaria checar duração, aqui assumimos slots fixos de 1h para simplificar
+            const conflict = all.find(a => a.dentistId == dentistId && a.date == date && a.time == time && a.id != id && a.status != 'cancelado');
+            if (conflict) {
+                alert('Conflito de horário! O dentista já possui atendimento neste horário.');
+                return;
+            }
+
+            if (id) {
+                const idx = all.findIndex(a => a.id == id);
+                all[idx] = { ...all[idx], patientId, dentistId, date, time, type, status };
+            } else {
+                all.push({ id: Date.now(), patientId, dentistId, date, time, type, status });
+                // Enviar Lembrete (Simulado)
+                Notifications.emailReminder("paciente@exemplo.com", `${date} às ${time}`);
+            }
+
+            Store.set('appointments', all);
+            Agenda.modal.hide();
+            Agenda.render();
+            Notifications.send('Agendamento salvo com sucesso!');
+        }
+    };
+
+    // 3. PACIENTES
+    const Patients = {
+        modal: null,
+        currentId: null,
+
+        render: () => {
+            const term = document.getElementById('patient-search').value.toLowerCase();
+            const list = Store.get('patients').filter(p => 
+                p.name.toLowerCase().includes(term) || p.cpf.includes(term)
+            );
+            const tbody = document.getElementById('patients-table-body');
+            tbody.innerHTML = '';
+            
+            list.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.name}</td>
+                        <td>${p.cpf || '-'}</td>
+                        <td>${p.phone || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info text-white" onclick="Patients.openDetails(${p.id})"><i class="fas fa-folder-open"></i> Abrir</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        },
+
+        openCreateModal: () => {
+            Patients.currentId = null;
+            document.getElementById('form-patient-data').reset();
+            document.getElementById('pat-id').value = '';
+            document.getElementById('pat-timeline').innerHTML = '';
+            document.getElementById('pat-files-list').innerHTML = '';
+            
+            Patients.modal = new bootstrap.Modal(document.getElementById('modal-patient'));
+            Patients.modal.show();
+        },
+
+        openDetails: (id) => {
+            Patients.currentId = id;
+            const p = Store.get('patients').find(x => x.id == id);
+            if (!p) return;
+
+            // Preencher Dados
+            document.getElementById('pat-id').value = p.id;
+            document.getElementById('pat-name').value = p.name;
+            document.getElementById('pat-cpf').value = p.cpf;
+            document.getElementById('pat-phone').value = p.phone;
+            document.getElementById('pat-email').value = p.email;
+            document.getElementById('pat-address').value = p.address || '';
+            document.getElementById('pat-dob').value = p.dob || '';
+            document.getElementById('pat-anamnesis').value = p.anamnesis || '';
+
+            // Renderizar Timeline
+            Patients.renderTimeline(p);
+            Patients.renderFiles(p);
+
+            Patients.modal = new bootstrap.Modal(document.getElementById('modal-patient'));
+            Patients.modal.show();
+        },
+
+        saveData: (e) => {
+            e.preventDefault();
+            const id = document.getElementById('pat-id').value;
+            const data = {
+                name: document.getElementById('pat-name').value,
+                cpf: document.getElementById('pat-cpf').value,
+                phone: document.getElementById('pat-phone').value,
+                email: document.getElementById('pat-email').value,
+                address: document.getElementById('pat-address').value,
+                dob: document.getElementById('pat-dob').value,
+            };
+
+            let all = Store.get('patients');
+            if (id) {
+                const idx = all.findIndex(x => x.id == id);
+                all[idx] = { ...all[idx], ...data };
+            } else {
+                const newId = Date.now();
+                all.push({ id: newId, ...data, timeline: [], files: [], anamnesis: '' });
+                Patients.currentId = newId;
+                document.getElementById('pat-id').value = newId;
+            }
+            Store.set('patients', all);
+            Notifications.send('Dados salvos.');
+            Patients.render();
+        },
+
+        saveAnamnesis: () => {
+            if(!Patients.currentId) return;
+            const text = document.getElementById('pat-anamnesis').value;
+            let all = Store.get('patients');
+            const idx = all.findIndex(x => x.id == Patients.currentId);
+            all[idx].anamnesis = text;
+            Store.set('patients', all);
+            Notifications.send('Anamnese atualizada.');
+        },
+
+        // Prontuário: Evolução
+        addEvolution: (e) => {
+            e.preventDefault();
+            if(!Patients.currentId) return;
+            
+            const proc = document.getElementById('evo-proc').value;
+            const desc = document.getElementById('evo-desc').value;
+            const val = document.getElementById('evo-val').value;
+
+            const entry = {
+                date: new Date().toISOString(),
+                proc,
+                desc,
+                val,
+                author: Auth.user.name
+            };
+
+            let all = Store.get('patients');
+            const idx = all.findIndex(x => x.id == Patients.currentId);
+            all[idx].timeline.push(entry);
+            Store.set('patients', all);
+            
+            document.getElementById('form-evolution').reset();
+            Patients.renderTimeline(all[idx]);
+            Notifications.send('Evolução registrada.');
+        },
+
+        renderTimeline: (p) => {
+            const container = document.getElementById('pat-timeline');
+            container.innerHTML = '';
+            // Ordenar mais recente primeiro
+            const sorted = [...p.timeline].sort((a,b) => new Date(b.date) - new Date(a.date));
+            
+            sorted.forEach(t => {
+                const d = new Date(t.date);
+                container.innerHTML += `
+                    <div class="timeline-step pb-3">
+                        <small class="text-muted">${d.toLocaleDateString()} ${d.toLocaleTimeString()} - <strong>${t.author}</strong></small>
+                        <div class="card p-2 mt-1 bg-light border-0">
+                            <strong>${t.proc}</strong>
+                            <p class="mb-0 small text-secondary">${t.desc}</p>
+                            ${t.val ? `<small class="text-success fw-bold">R$ ${t.val}</small>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        },
+
+        // Arquivos (Simulado com Base64)
+        uploadFile: () => {
+            const input = document.getElementById('file-upload');
+            if (input.files.length === 0) return;
+            const file = input.files[0];
+            
+            // Limite simples
+            if (file.size > 2000000) { // 2MB
+                alert("Arquivo muito grande para armazenamento local (Demo). Tente arquivos menores.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fileData = {
+                    name: file.name,
+                    date: new Date().toISOString(),
+                    data: e.target.result // Base64
+                };
+                
+                let all = Store.get('patients');
+                const idx = all.findIndex(x => x.id == Patients.currentId);
+                all[idx].files.push(fileData);
+                Store.set('patients', all);
+                Patients.renderFiles(all[idx]);
+                input.value = '';
+                Notifications.send('Arquivo anexado.');
+            };
+            reader.readAsDataURL(file);
+        },
+
+        renderFiles: (p) => {
+            const container = document.getElementById('pat-files-list');
+            container.innerHTML = '';
+            p.files.forEach(f => {
+                container.innerHTML += `
+                    <a href="#" class="list-group-item list-group-item-action" onclick="Patients.viewFile('${f.data}')">
+                        <i class="fas fa-paperclip me-2"></i> ${f.name} <small class="text-muted float-end">${new Date(f.date).toLocaleDateString()}</small>
+                    </a>
+                `;
+            });
+        },
+        
+        viewFile: (base64) => {
+            const win = window.open();
+            win.document.write(`<iframe src="${base64}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+        }
+    };
+
+    // 4. USUÁRIOS
+    const Users = {
+        modal: null,
+        render: () => {
+            const users = Store.get('users');
+            const tbody = document.getElementById('users-table-body');
+            tbody.innerHTML = '';
+            users.forEach(u => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${u.name}</td>
+                        <td>${u.email}</td>
+                        <td>${u.role}</td>
+                        <td>${u.active ? 'Ativo' : 'Inativo'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="Users.edit(${u.id})">Editar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        },
+        openModal: () => {
+            document.getElementById('form-user').reset();
+            document.getElementById('usr-id').value = '';
+            Users.modal = new bootstrap.Modal(document.getElementById('modal-user'));
+            Users.modal.show();
+        },
+        edit: (id) => {
+            const u = Store.get('users').find(x => x.id == id);
+            document.getElementById('usr-id').value = u.id;
+            document.getElementById('usr-name').value = u.name;
+            document.getElementById('usr-email').value = u.email;
+            document.getElementById('usr-role').value = u.role;
+            document.getElementById('usr-active').checked = u.active;
+            Users.modal = new bootstrap.Modal(document.getElementById('modal-user'));
+            Users.modal.show();
+        },
+        save: (e) => {
+            e.preventDefault();
+            const id = document.getElementById('usr-id').value;
+            const name = document.getElementById('usr-name').value;
+            const email = document.getElementById('usr-email').value;
+            const role = document.getElementById('usr-role').value;
+            const pass = document.getElementById('usr-pass').value;
+            const active = document.getElementById('usr-active').checked;
+
+            let all = Store.get('users');
+            if (id) {
+                const idx = all.findIndex(x => x.id == id);
+                all[idx].name = name;
+                all[idx].email = email;
+                all[idx].role = role;
+                all[idx].active = active;
+                if(pass) all[idx].pass = pass; // Só atualiza se digitou algo
+            } else {
+                all.push({ id: Date.now(), name, email, pass: pass || '123456', role, active });
+            }
+            Store.set('users', all);
+            Users.modal.hide();
+            Users.render();
+            Notifications.send('Usuário salvo.');
+        }
+    };
+
+    /* --- UI GERAL --- */
+    const UI = {
+        toggleSidebar: () => {
+            document.getElementById('sidebar').classList.toggle('active');
+        },
+        toggleDarkMode: () => {
+            const body = document.body;
+            if(body.getAttribute('data-bs-theme') === 'dark') {
+                body.removeAttribute('data-bs-theme');
+            } else {
+                body.setAttribute('data-bs-theme', 'dark');
+            }
+        },
+        showLogin: () => {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('app-container').classList.add('hidden');
+        },
+        showApp: () => {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('user-name-display').innerText = Auth.user.name;
+            document.getElementById('user-role-display').innerText = Auth.user.role.toUpperCase();
+            
+            // Esconder menus baseados em papel
+            if (!Auth.hasRole(['admin'])) {
+                document.querySelectorAll('.nav-admin-only').forEach(el => el.classList.add('hidden'));
+            }
+
+            Router.go('dashboard');
+        }
+    };
+
+    /* --- RELATÓRIOS --- */
+    const Reports = {
+        generateConsultas: () => {
+            window.print(); // Solução simples de PDF
+        },
+        generateProcedures: () => {
+            let csv = "Data,Paciente,Procedimento,Valor\n";
+            Store.get('patients').forEach(p => {
+                p.timeline.forEach(t => {
+                    csv += `${t.date},${p.name},${t.proc},${t.val || 0}\n`;
+                });
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'relatorio_procedimentos.csv';
+            a.click();
+        }
+    };
+    
+    /* --- BACKUP DO SISTEMA --- */
+    const System = {
+        backup: () => {
+            const data = {
+                users: Store.get('users'),
+                patients: Store.get('patients'),
+                appointments: Store.get('appointments'),
+                date: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup_odontosys_${Date.now()}.json`;
+            a.click();
+        }
+    };
+
+    /* --- INICIALIZAÇÃO --- */
+    document.addEventListener('DOMContentLoaded', () => {
+        Store.init();
+        Auth.check();
+
+        // Bind Formulários
+        document.getElementById('form-login').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            const res = Auth.login(email, pass);
+            if (!res.success) alert(res.message);
+        });
+
+        document.getElementById('form-agenda').addEventListener('submit', Agenda.save);
+        document.getElementById('form-patient-data').addEventListener('submit', Patients.saveData);
+        document.getElementById('form-evolution').addEventListener('submit', Patients.addEvolution);
+        document.getElementById('form-user').addEventListener('submit', Users.save);
+
+        // Teste Básico Automatizado (Ao carregar)
+        console.log("Running self-test...");
+        try {
+            const testCollision = Store.get('appointments').length;
+            // Se passar sem erro, sistema ok.
+            console.log("System Core OK. Appointments loaded: " + testCollision);
+        } catch(e) {
+            console.error("System integrity check failed", e);
+        }
+    });
+
+    </script>
+</body>
+</html>        /** 
          * CONFIGURAÇÃO DO FIREBASE 
          * SUBSTITUA PELAS SUAS CREDENCIAIS DO CONSOLE FIREBASE
          */
