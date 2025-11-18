@@ -1,2226 +1,791 @@
-
 <!DOCTYPE html>
-<!-- Deepseek -->
-
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Prontuário Odontológico</title>
+    <title>OdontoSystem - Gestão Odontológica</title>
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Firebase -->
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDKs (Compatibilidade v9 via CDN) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
-    
+
+    <!-- PDF Export Libs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <style>
         :root {
-            --primary-color: #3498db;
-            --secondary-color: #2c3e50;
-            --success-color: #27ae60;
-            --warning-color: #f39c12;
-            --danger-color: #e74c3c;
-            --light-color: #ecf0f1;
-            --dark-color: #34495e;
+            --primary-color: #0d6efd;
+            --bg-light: #f8f9fa;
         }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-        }
-        
-        .sidebar {
-            min-height: 100vh;
-            background-color: var(--secondary-color);
-            color: white;
-            transition: all 0.3s;
-        }
-        
-        .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.8);
-            padding: 0.75rem 1rem;
-            margin: 0.125rem 0;
-        }
-        
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
-            color: white;
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .sidebar .nav-link i {
-            margin-right: 0.5rem;
-        }
-        
-        .main-content {
-            padding: 20px;
-        }
-        
-        .card {
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            border: none;
-        }
-        
-        .card-header {
-            background-color: white;
-            border-bottom: 1px solid #e3e6f0;
-            font-weight: 600;
-            padding: 1rem 1.35rem;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-primary:hover {
-            background-color: #2980b9;
-            border-color: #2980b9;
-        }
-        
-        .login-container {
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #3498db, #2c3e50);
-        }
-        
-        .login-card {
-            width: 100%;
-            max-width: 400px;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-        }
-        
-        .dashboard-card {
-            transition: transform 0.3s;
-        }
-        
-        .dashboard-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .calendar-day {
-            height: 100px;
-            border: 1px solid #e3e6f0;
-            padding: 5px;
-            overflow-y: auto;
-        }
-        
-        .calendar-day.today {
-            background-color: rgba(52, 152, 219, 0.1);
-        }
-        
-        .calendar-event {
-            font-size: 0.75rem;
-            padding: 2px 5px;
-            margin-bottom: 2px;
-            border-radius: 3px;
-            background-color: var(--primary-color);
-            color: white;
-            cursor: pointer;
-        }
-        
-        .patient-photo {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--primary-color);
-        }
-        
-        .file-upload-container {
-            border: 2px dashed #dee2e6;
-            border-radius: 5px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .file-upload-container:hover {
-            border-color: var(--primary-color);
-            background-color: rgba(52, 152, 219, 0.05);
-        }
-        
-        .file-preview {
-            max-width: 150px;
-            max-height: 150px;
-            margin: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        
-        .status-agendado {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-confirmado {
-            background-color: #d1ecf1;
-            color: #0c5460;
-        }
-        
-        .status-cancelado {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        
-        .status-realizado {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        
-        .table th {
-            border-top: none;
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-        
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .hidden {
-            display: none !important;
-        }
+        body { background-color: var(--bg-light); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .sidebar { min-height: 100vh; background: #fff; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
+        .nav-link { color: #555; margin-bottom: 5px; border-radius: 5px; }
+        .nav-link:hover, .nav-link.active { background-color: var(--primary-color); color: white; }
+        .card { border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .hidden { display: none !important; }
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .status-agendado { color: orange; font-weight: bold; }
+        .status-confirmado { color: green; font-weight: bold; }
+        .status-cancelado { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
-    <!-- Login Screen -->
-    <div id="login-screen" class="login-container">
-        <div class="login-card bg-white">
-            <div class="text-center mb-4">
-                <h2 class="fw-bold text-primary">OdontoSystem</h2>
-                <p class="text-muted">Sistema de Prontuário Odontológico</p>
-            </div>
-            
+
+    <!-- Loading Spinner -->
+    <div id="loading-overlay">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+
+    <!-- Tela de Login -->
+    <div id="login-screen" class="container d-flex justify-content-center align-items-center vh-100">
+        <div class="card p-4" style="width: 400px;">
+            <h3 class="text-center mb-4"><i class="fas fa-tooth text-primary"></i> OdontoSystem</h3>
             <form id="login-form">
                 <div class="mb-3">
-                    <label for="login-email" class="form-label">E-mail</label>
-                    <input type="email" class="form-control" id="login-email" required>
+                    <label>E-mail</label>
+                    <input type="email" id="login-email" class="form-control" required>
                 </div>
                 <div class="mb-3">
-                    <label for="login-password" class="form-label">Senha</label>
-                    <input type="password" class="form-control" id="login-password" required>
+                    <label>Senha</label>
+                    <input type="password" id="login-password" class="form-control" required>
                 </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="remember-me">
-                    <label class="form-check-label" for="remember-me">Lembrar-me</label>
-                </div>
-                <button type="submit" class="btn btn-primary w-100 mb-3" id="login-button">
-                    <span id="login-text">Entrar</span>
-                    <span id="login-loading" class="loading hidden"></span>
-                </button>
-                <div class="text-center">
-                    <a href="#" id="forgot-password-link">Esqueci minha senha</a>
+                <button type="submit" class="btn btn-primary w-100">Entrar</button>
+                <div class="mt-3 text-center">
+                    <a href="#" onclick="authModule.recoverPassword()">Esqueci a senha</a>
                 </div>
             </form>
-            
-            <div id="password-recovery" class="hidden mt-4">
-                <h5 class="mb-3">Recuperação de Senha</h5>
-                <form id="recovery-form">
-                    <div class="mb-3">
-                        <label for="recovery-email" class="form-label">E-mail</label>
-                        <input type="email" class="form-control" id="recovery-email" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100 mb-3">Enviar Link de Recuperação</button>
-                </form>
-                <div class="text-center">
-                    <a href="#" id="back-to-login">Voltar ao Login</a>
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- Main Application -->
-    <div id="app" class="hidden">
-        <!-- Top Navigation -->
-        <nav class="navbar navbar-expand navbar-light bg-white shadow-sm">
-            <div class="container-fluid">
-                <button class="btn btn-link text-dark" id="sidebar-toggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle me-1"></i>
-                            <span id="user-name">Usuário</span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                            <li><a class="dropdown-item" href="#" id="profile-link"><i class="fas fa-user me-2"></i>Meu Perfil</a></li>
-                            <li><a class="dropdown-item" href="#" id="change-password-link"><i class="fas fa-key me-2"></i>Alterar Senha</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" id="logout-button"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
-                        </ul>
-                    </li>
+    <!-- Layout Principal (Sidebar + Conteúdo) -->
+    <div id="main-layout" class="container-fluid hidden">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 d-none d-md-block sidebar py-3">
+                <div class="text-center mb-4">
+                    <h4><i class="fas fa-tooth text-primary"></i> OdontoSys</h4>
+                    <small id="user-role-display" class="text-muted">Carregando...</small>
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item"><a class="nav-link active" href="#" onclick="router.navigate('dashboard')"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="router.navigate('agenda')"><i class="fas fa-calendar-alt"></i> Agenda</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="router.navigate('pacientes')"><i class="fas fa-users"></i> Pacientes</a></li>
+                    <li class="nav-item role-admin hidden"><a class="nav-link" href="#" onclick="router.navigate('usuarios')"><i class="fas fa-user-shield"></i> Usuários</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="router.navigate('relatorios')"><i class="fas fa-chart-bar"></i> Relatórios</a></li>
+                    <li class="nav-item mt-4"><a class="nav-link text-danger" href="#" onclick="authModule.logout()"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
                 </ul>
-            </div>
-        </nav>
+            </nav>
 
-        <div class="container-fluid">
-            <div class="row">
-                <!-- Sidebar -->
-                <div class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebar">
-                    <div class="position-sticky pt-3">
-                        <ul class="nav flex-column">
-                            <li class="nav-item">
-                                <a class="nav-link active" href="#" data-section="dashboard">
-                                    <i class="fas fa-tachometer-alt"></i>
-                                    Dashboard
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" data-section="patients">
-                                    <i class="fas fa-user-injured"></i>
-                                    Pacientes
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" data-section="schedule">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    Agenda
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" data-section="records">
-                                    <i class="fas fa-file-medical"></i>
-                                    Prontuários
-                                </a>
-                            </li>
-                            <li class="nav-item admin-only">
-                                <a class="nav-link" href="#" data-section="users">
-                                    <i class="fas fa-users"></i>
-                                    Usuários
-                                </a>
-                            </li>
-                            <li class="nav-item admin-only">
-                                <a class="nav-link" href="#" data-section="reports">
-                                    <i class="fas fa-chart-bar"></i>
-                                    Relatórios
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" data-section="settings">
-                                    <i class="fas fa-cog"></i>
-                                    Configurações
-                                </a>
-                            </li>
+            <!-- Conteúdo Principal -->
+            <main class="col-md-10 ms-sm-auto px-md-4 py-4">
+                
+                <!-- DASHBOARD -->
+                <div id="view-dashboard" class="view-section">
+                    <h2>Dashboard</h2>
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white p-3">
+                                <h5>Consultas Hoje</h5>
+                                <h2 id="dash-today-count">0</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white p-3">
+                                <h5>Pacientes Totais</h5>
+                                <h2 id="dash-patient-count">0</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white p-3">
+                                <h5>Retornos Pendentes</h5>
+                                <h2 id="dash-returns">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3" id="dash-alert">
+                        <strong>Avisos:</strong> Verifique a agenda para confirmações pendentes.
+                    </div>
+                </div>
+
+                <!-- AGENDA -->
+                <div id="view-agenda" class="view-section hidden">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>Agenda</h2>
+                        <button class="btn btn-primary" onclick="agendaModule.openModal()">Nova Consulta</button>
+                    </div>
+                    <input type="date" id="agenda-date-filter" class="form-control w-auto mb-3" onchange="agendaModule.loadAgenda()">
+                    <div class="table-responsive">
+                        <table class="table table-hover bg-white">
+                            <thead><tr><th>Hora</th><th>Paciente</th><th>Profissional</th><th>Procedimento</th><th>Status</th><th>Ações</th></tr></thead>
+                            <tbody id="agenda-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PACIENTES -->
+                <div id="view-pacientes" class="view-section hidden">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>Pacientes</h2>
+                        <button class="btn btn-primary" onclick="patientModule.openModal()">Novo Paciente</button>
+                    </div>
+                    <input type="text" class="form-control mb-3" placeholder="Buscar por nome ou CPF..." onkeyup="patientModule.search(this.value)">
+                    <div class="table-responsive">
+                        <table class="table table-hover bg-white">
+                            <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Ações</th></tr></thead>
+                            <tbody id="patient-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- DETALHE PACIENTE (Prontuário) -->
+                <div id="view-patient-detail" class="view-section hidden">
+                    <button class="btn btn-secondary mb-3" onclick="router.navigate('pacientes')"><i class="fas fa-arrow-left"></i> Voltar</button>
+                    <div class="card p-3">
+                        <h3 id="detail-name">Nome do Paciente</h3>
+                        <p id="detail-info" class="text-muted">CPF: ... | Email: ...</p>
+                        
+                        <ul class="nav nav-tabs" id="patientTab" role="tablist">
+                            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-anamnese">Anamnese</button></li>
+                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-evolucao">Evolução/Prontuário</button></li>
+                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-arquivos">Arquivos</button></li>
                         </ul>
+                        
+                        <div class="tab-content p-3 border border-top-0 bg-white">
+                            <!-- Anamnese -->
+                            <div class="tab-pane fade show active" id="tab-anamnese">
+                                <textarea id="anamnese-text" class="form-control mb-2" rows="5" placeholder="Alergias, Doenças, Histórico..."></textarea>
+                                <button class="btn btn-primary" onclick="patientModule.saveAnamnese()">Salvar Anamnese</button>
+                            </div>
+                            <!-- Evolução -->
+                            <div class="tab-pane fade" id="tab-evolucao">
+                                <div class="mb-3">
+                                    <label>Nova Evolução</label>
+                                    <textarea id="evo-text" class="form-control" rows="2"></textarea>
+                                    <button class="btn btn-success mt-2" onclick="patientModule.addEvolution()">Adicionar Registro</button>
+                                    <button class="btn btn-outline-secondary mt-2 ms-2" onclick="patientModule.exportPDF()">Exportar PDF</button>
+                                </div>
+                                <div id="evolution-history" class="mt-4 border-top pt-2">
+                                    <!-- Histórico injetado aqui -->
+                                </div>
+                            </div>
+                            <!-- Arquivos -->
+                            <div class="tab-pane fade" id="tab-arquivos">
+                                <div class="input-group mb-3">
+                                    <input type="file" class="form-control" id="file-upload-input">
+                                    <button class="btn btn-outline-primary" type="button" onclick="patientModule.uploadFile()">Upload</button>
+                                </div>
+                                <ul class="list-group" id="file-list"></ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Main Content -->
-                <main class="col-md-9 ms-sm-auto col-lg-10 main-content">
-                    <!-- Dashboard Section -->
-                    <div id="dashboard-section" class="content-section">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">Dashboard</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <div class="btn-group me-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary">Hoje</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary">Semana</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary">Mês</button>
+                <!-- USUÁRIOS (Admin) -->
+                <div id="view-usuarios" class="view-section hidden">
+                    <h2>Gestão de Usuários</h2>
+                    <div class="card p-3 mb-3">
+                        <h5>Novo Usuário</h5>
+                        <form onsubmit="userModule.create(event)">
+                            <div class="row">
+                                <div class="col"><input type="email" id="new-user-email" placeholder="E-mail" class="form-control" required></div>
+                                <div class="col"><input type="password" id="new-user-pass" placeholder="Senha" class="form-control" required></div>
+                                <div class="col">
+                                    <select id="new-user-role" class="form-control">
+                                        <option value="recepcao">Recepção</option>
+                                        <option value="dentista">Dentista</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
                                 </div>
+                                <div class="col-auto"><button type="submit" class="btn btn-primary">Criar</button></div>
                             </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card dashboard-card border-left-primary shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                    Consultas Hoje
-                                                </div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="today-appointments">0</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card dashboard-card border-left-success shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                    Novos Pacientes (Mês)
-                                                </div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="new-patients">0</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-user-plus fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card dashboard-card border-left-info shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                    Procedimentos Realizados
-                                                </div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="procedures-done">0</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-tooth fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card dashboard-card border-left-warning shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                    Retornos Pendentes
-                                                </div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="pending-returns">0</div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-undo fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-lg-8">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                        <h6 class="m-0 font-weight-bold text-primary">Consultas do Dia</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered" id="today-appointments-table" width="100%" cellspacing="0">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Horário</th>
-                                                        <th>Paciente</th>
-                                                        <th>Procedimento</th>
-                                                        <th>Status</th>
-                                                        <th>Ações</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <!-- Today's appointments will be populated here -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-lg-4">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary">Próximos Retornos</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="pending-returns-list">
-                                            <!-- Pending returns will be populated here -->
-                                        </div>
-                                    </div>
-                                </div>
+                        </form>
+                    </div>
+                    <table class="table bg-white">
+                        <thead><tr><th>Email</th><th>Função</th><th>Ações</th></tr></thead>
+                        <tbody id="users-list"></tbody>
+                    </table>
+                </div>
+                
+                <!-- RELATÓRIOS -->
+                <div id="view-relatorios" class="view-section hidden">
+                    <h2>Relatórios</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card p-3">
+                                <h5>Exportar Pacientes</h5>
+                                <button onclick="reportsModule.exportPatientsCSV()" class="btn btn-outline-success">Baixar CSV</button>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Patients Section -->
-                    <div id="patients-section" class="content-section hidden">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">Pacientes</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <button class="btn btn-primary" id="add-patient-btn">
-                                    <i class="fas fa-plus me-1"></i> Novo Paciente
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Lista de Pacientes</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="patients-table" width="100%" cellspacing="0">
-                                        <thead>
-                                            <tr>
-                                                <th>Nome</th>
-                                                <th>CPF</th>
-                                                <th>Telefone</th>
-                                                <th>E-mail</th>
-                                                <th>Última Consulta</th>
-                                                <th>Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Patients will be populated here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Schedule Section -->
-                    <div id="schedule-section" class="content-section hidden">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">Agenda</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <div class="btn-group me-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="day-view">Dia</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="week-view">Semana</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary active" id="month-view">Mês</button>
-                                </div>
-                                <button class="btn btn-primary" id="add-appointment-btn">
-                                    <i class="fas fa-plus me-1"></i> Nova Consulta
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                <h6 class="m-0 font-weight-bold text-primary" id="calendar-title">Calendário</h6>
-                                <div class="dropdown no-arrow">
-                                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                                    </a>
-                                    <ul class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
-                                        <li><a class="dropdown-item" href="#" id="prev-period"><i class="fas fa-chevron-left me-2"></i>Anterior</a></li>
-                                        <li><a class="dropdown-item" href="#" id="next-period"><i class="fas fa-chevron-right me-2"></i>Próximo</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item" href="#" id="today-period">Hoje</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div id="calendar-container">
-                                    <!-- Calendar will be rendered here -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Records Section -->
-                    <div id="records-section" class="content-section hidden">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">Prontuários</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <button class="btn btn-primary" id="add-record-btn">
-                                    <i class="fas fa-plus me-1"></i> Novo Prontuário
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Prontuários dos Pacientes</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="records-table" width="100%" cellspacing="0">
-                                        <thead>
-                                            <tr>
-                                                <th>Paciente</th>
-                                                <th>Data</th>
-                                                <th>Procedimento</th>
-                                                <th>Dentista</th>
-                                                <th>Status</th>
-                                                <th>Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Records will be populated here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Users Section -->
-                    <div id="users-section" class="content-section hidden">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">Usuários</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <button class="btn btn-primary" id="add-user-btn">
-                                    <i class="fas fa-plus me-1"></i> Novo Usuário
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Lista de Usuários</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered" id="users-table" width="100%" cellspacing="0">
-                                        <thead>
-                                            <tr>
-                                                <th>Nome</th>
-                                                <th>E-mail</th>
-                                                <th>Função</th>
-                                                <th>Status</th>
-                                                <th>Último Acesso</th>
-                                                <th>Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Users will be populated here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Reports Section -->
-                    <div id="reports-section" class="content-section hidden">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">Relatórios</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <button class="btn btn-primary" id="generate-report-btn">
-                                    <i class="fas fa-download me-1"></i> Gerar Relatório
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-lg-4">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <form id="report-filters">
-                                            <div class="mb-3">
-                                                <label for="report-type" class="form-label">Tipo de Relatório</label>
-                                                <select class="form-select" id="report-type">
-                                                    <option value="patients">Pacientes</option>
-                                                    <option value="appointments">Consultas</option>
-                                                    <option value="procedures">Procedimentos</option>
-                                                    <option value="financial">Financeiro</option>
-                                                </select>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="date-range" class="form-label">Período</label>
-                                                <div class="input-group">
-                                                    <input type="date" class="form-control" id="start-date">
-                                                    <span class="input-group-text">até</span>
-                                                    <input type="date" class="form-control" id="end-date">
-                                                </div>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="dentist-filter" class="form-label">Dentista</label>
-                                                <select class="form-select" id="dentist-filter">
-                                                    <option value="all">Todos</option>
-                                                    <!-- Dentists will be populated here -->
-                                                </select>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary w-100">Aplicar Filtros</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-lg-8">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary">Resultados</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="report-results">
-                                            <!-- Report results will be displayed here -->
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Settings Section -->
-                    <div id="settings-section" class="content-section hidden">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">Configurações</h1>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-lg-6">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary">Perfil do Usuário</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <form id="profile-form">
-                                            <div class="mb-3">
-                                                <label for="profile-name" class="form-label">Nome Completo</label>
-                                                <input type="text" class="form-control" id="profile-name" required>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="profile-email" class="form-label">E-mail</label>
-                                                <input type="email" class="form-control" id="profile-email" required>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="profile-phone" class="form-label">Telefone</label>
-                                                <input type="tel" class="form-control" id="profile-phone">
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-lg-6">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header py-3">
-                                        <h6 class="m-0 font-weight-bold text-primary">Alterar Senha</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <form id="change-password-form">
-                                            <div class="mb-3">
-                                                <label for="current-password" class="form-label">Senha Atual</label>
-                                                <input type="password" class="form-control" id="current-password" required>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="new-password" class="form-label">Nova Senha</label>
-                                                <input type="password" class="form-control" id="new-password" required>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="confirm-password" class="form-label">Confirmar Nova Senha</label>
-                                                <input type="password" class="form-control" id="confirm-password" required>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">Alterar Senha</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            </div>
+            </main>
         </div>
     </div>
 
-    <!-- Modals -->
-    <!-- Patient Modal -->
-    <div class="modal fade" id="patientModal" tabindex="-1" aria-labelledby="patientModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="patientModalLabel">Novo Paciente</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="patient-form">
-                        <input type="hidden" id="patient-id">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="patient-name" class="form-label">Nome Completo *</label>
-                                    <input type="text" class="form-control" id="patient-name" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="patient-cpf" class="form-label">CPF *</label>
-                                    <input type="text" class="form-control" id="patient-cpf" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="patient-phone" class="form-label">Telefone *</label>
-                                    <input type="tel" class="form-control" id="patient-phone" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="patient-email" class="form-label">E-mail</label>
-                                    <input type="email" class="form-control" id="patient-email">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="patient-address" class="form-label">Endereço</label>
-                            <textarea class="form-control" id="patient-address" rows="2"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="patient-allergies" class="form-label">Alergias</label>
-                            <textarea class="form-control" id="patient-allergies" rows="2"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="patient-conditions" class="form-label">Doenças/Condições</label>
-                            <textarea class="form-control" id="patient-conditions" rows="2"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="patient-medications" class="form-label">Medicamentos em Uso</label>
-                            <textarea class="form-control" id="patient-medications" rows="2"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="patient-history" class="form-label">Histórico Odontológico</label>
-                            <textarea class="form-control" id="patient-history" rows="3"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="save-patient-btn">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Appointment Modal -->
-    <div class="modal fade" id="appointmentModal" tabindex="-1" aria-labelledby="appointmentModalLabel" aria-hidden="true">
+    <!-- MODAL: Agenda -->
+    <div class="modal fade" id="modal-agenda" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="appointmentModalLabel">Nova Consulta</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
+                <div class="modal-header"><h5 class="modal-title">Agendamento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <form id="appointment-form">
-                        <input type="hidden" id="appointment-id">
-                        <div class="mb-3">
-                            <label for="appointment-patient" class="form-label">Paciente *</label>
-                            <select class="form-select" id="appointment-patient" required>
-                                <option value="">Selecione um paciente</option>
-                                <!-- Patients will be populated here -->
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="appointment-dentist" class="form-label">Dentista *</label>
-                            <select class="form-select" id="appointment-dentist" required>
-                                <option value="">Selecione um dentista</option>
-                                <!-- Dentists will be populated here -->
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="appointment-date" class="form-label">Data *</label>
-                            <input type="date" class="form-control" id="appointment-date" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="appointment-time" class="form-label">Horário *</label>
-                            <input type="time" class="form-control" id="appointment-time" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="appointment-procedure" class="form-label">Procedimento *</label>
-                            <select class="form-select" id="appointment-procedure" required>
-                                <option value="">Selecione um procedimento</option>
-                                <option value="consulta">Consulta</option>
-                                <option value="limpeza">Limpeza</option>
-                                <option value="restauracao">Restauração</option>
-                                <option value="canal">Tratamento de Canal</option>
-                                <option value="extracao">Extração</option>
-                                <option value="implante">Implante</option>
-                                <option value="ortodontia">Ortodontia</option>
-                                <option value="protese">Prótese</option>
-                                <option value="clareamento">Clareamento</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="appointment-notes" class="form-label">Observações</label>
-                            <textarea class="form-control" id="appointment-notes" rows="3"></textarea>
-                        </div>
-                    </form>
+                    <input type="hidden" id="agenda-id">
+                    <label>Paciente</label>
+                    <select id="agenda-paciente" class="form-control mb-2"></select>
+                    <label>Data e Hora</label>
+                    <input type="datetime-local" id="agenda-data" class="form-control mb-2">
+                    <label>Procedimento</label>
+                    <input type="text" id="agenda-proc" class="form-control mb-2">
+                    <label>Status</label>
+                    <select id="agenda-status" class="form-control mb-2">
+                        <option value="Agendado">Agendado</option>
+                        <option value="Confirmado">Confirmado</option>
+                        <option value="Cancelado">Cancelado</option>
+                    </select>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="save-appointment-btn">Salvar</button>
+                    <button type="button" class="btn btn-danger hidden" id="btn-delete-agenda" onclick="agendaModule.delete()">Excluir</button>
+                    <button type="button" class="btn btn-primary" onclick="agendaModule.save()">Salvar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- User Modal -->
-    <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+    <!-- MODAL: Novo Paciente -->
+    <div class="modal fade" id="modal-paciente" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="userModalLabel">Novo Usuário</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
+                <div class="modal-header"><h5 class="modal-title">Dados do Paciente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <form id="user-form">
-                        <input type="hidden" id="user-id">
-                        <div class="mb-3">
-                            <label for="user-name" class="form-label">Nome Completo *</label>
-                            <input type="text" class="form-control" id="user-name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="user-email" class="form-label">E-mail *</label>
-                            <input type="email" class="form-control" id="user-email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="user-role" class="form-label">Função *</label>
-                            <select class="form-select" id="user-role" required>
-                                <option value="">Selecione uma função</option>
-                                <option value="admin">Administrador</option>
-                                <option value="dentista">Dentista</option>
-                                <option value="recepcao">Recepção</option>
-                            </select>
-                        </div>
-                        <div class="mb-3" id="user-password-field">
-                            <label for="user-password" class="form-label">Senha *</label>
-                            <input type="password" class="form-control" id="user-password">
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="user-active">
-                            <label class="form-check-label" for="user-active">Usuário Ativo</label>
-                        </div>
-                    </form>
+                    <input type="hidden" id="pat-id">
+                    <input type="text" id="pat-nome" placeholder="Nome Completo" class="form-control mb-2" required>
+                    <input type="text" id="pat-cpf" placeholder="CPF" class="form-control mb-2">
+                    <input type="text" id="pat-tel" placeholder="Telefone" class="form-control mb-2">
+                    <input type="email" id="pat-email" placeholder="E-mail" class="form-control mb-2">
+                    <textarea id="pat-endereco" placeholder="Endereço" class="form-control mb-2"></textarea>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="save-user-btn">Salvar</button>
+                    <button type="button" class="btn btn-primary" onclick="patientModule.save()">Salvar</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
-        // Firebase Configuration
+        /** 
+         * CONFIGURAÇÃO DO FIREBASE 
+         * SUBSTITUA PELAS SUAS CREDENCIAIS DO CONSOLE FIREBASE
+         */
         const firebaseConfig = {
-            apiKey: "SUA_API_KEY",
+            apiKey: "SUA_API_KEY_AQUI",
             authDomain: "SEU_PROJETO.firebaseapp.com",
-            projectId: "SEU_PROJETO",
+            projectId: "SEU_PROJECT_ID",
             storageBucket: "SEU_PROJETO.appspot.com",
             messagingSenderId: "SEU_SENDER_ID",
             appId: "SEU_APP_ID"
         };
 
-        // Initialize Firebase
+        // Inicialização
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
 
-        // Application State
+        // Estado Global
         let currentUser = null;
-        let currentView = 'dashboard';
-        let calendarView = 'month';
-        let currentDate = new Date();
+        let currentRole = null;
+        let currentPatientId = null;
 
-        // DOM Elements
-        const loginScreen = document.getElementById('login-screen');
-        const app = document.getElementById('app');
-        const loginForm = document.getElementById('login-form');
-        const loginButton = document.getElementById('login-button');
-        const loginText = document.getElementById('login-text');
-        const loginLoading = document.getElementById('login-loading');
-        const forgotPasswordLink = document.getElementById('forgot-password-link');
-        const passwordRecovery = document.getElementById('password-recovery');
-        const recoveryForm = document.getElementById('recovery-form');
-        const backToLogin = document.getElementById('back-to-login');
-        const logoutButton = document.getElementById('logout-button');
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-        const sidebar = document.getElementById('sidebar');
-        const userName = document.getElementById('user-name');
-        const contentSections = document.querySelectorAll('.content-section');
-        const navLinks = document.querySelectorAll('.sidebar .nav-link');
-        const adminOnlyElements = document.querySelectorAll('.admin-only');
-
-        // Modal Elements
-        const patientModal = new bootstrap.Modal(document.getElementById('patientModal'));
-        const appointmentModal = new bootstrap.Modal(document.getElementById('appointmentModal'));
-        const userModal = new bootstrap.Modal(document.getElementById('userModal'));
-
-        // Initialize Application
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeAuth();
-            setupEventListeners();
-        });
-
-        // Authentication Functions
-        function initializeAuth() {
-            auth.onAuthStateChanged(user => {
-                if (user) {
-                    currentUser = user;
-                    loadUserData(user.uid);
-                    showApp();
-                } else {
-                    showLogin();
+        // --- Módulo de Roteamento ---
+        const router = {
+            navigate: (viewId) => {
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+                
+                const target = document.getElementById('view-' + viewId);
+                if (target) {
+                    target.classList.remove('hidden');
+                    // Destaque no menu
+                    // Lógica simples para o menu
                 }
-            });
-        }
 
-        function loadUserData(uid) {
-            db.collection('users').doc(uid).get()
-                .then(doc => {
-                    if (doc.exists) {
-                        const userData = doc.data();
-                        userName.textContent = userData.name;
-                        currentUser.role = userData.role;
-                        
-                        // Show/hide admin elements based on role
-                        if (userData.role === 'admin') {
-                            adminOnlyElements.forEach(el => el.classList.remove('hidden'));
-                        } else {
-                            adminOnlyElements.forEach(el => el.classList.add('hidden'));
-                        }
-                        
-                        // Load initial data based on user role
-                        loadInitialData();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading user data:', error);
-                });
-        }
+                if(viewId === 'dashboard') dashboardModule.load();
+                if(viewId === 'agenda') agendaModule.loadAgenda();
+                if(viewId === 'pacientes') patientModule.loadList();
+                if(viewId === 'usuarios') userModule.loadList();
+            }
+        };
 
-        function showLogin() {
-            loginScreen.classList.remove('hidden');
-            app.classList.add('hidden');
-        }
-
-        function showApp() {
-            loginScreen.classList.add('hidden');
-            app.classList.remove('hidden');
-            showSection('dashboard');
-        }
-
-        // Event Listeners
-        function setupEventListeners() {
-            // Login Form
-            loginForm.addEventListener('submit', handleLogin);
-            
-            // Password Recovery
-            forgotPasswordLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                passwordRecovery.classList.remove('hidden');
-            });
-            
-            backToLogin.addEventListener('click', function(e) {
-                e.preventDefault();
-                passwordRecovery.classList.add('hidden');
-            });
-            
-            recoveryForm.addEventListener('submit', handlePasswordRecovery);
-            
-            // Logout
-            logoutButton.addEventListener('click', handleLogout);
-            
-            // Sidebar Toggle
-            sidebarToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('collapse');
-            });
-            
-            // Navigation
-            navLinks.forEach(link => {
-                link.addEventListener('click', function(e) {
+        // --- Módulo de Autenticação ---
+        const authModule = {
+            init: () => {
+                document.getElementById('login-form').addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    const section = this.getAttribute('data-section');
-                    showSection(section);
-                    
-                    // Update active state
-                    navLinks.forEach(l => l.classList.remove('active'));
-                    this.classList.add('active');
-                });
-            });
-            
-            // Patient Management
-            document.getElementById('add-patient-btn').addEventListener('click', function() {
-                showPatientModal();
-            });
-            
-            document.getElementById('save-patient-btn').addEventListener('click', savePatient);
-            
-            // Appointment Management
-            document.getElementById('add-appointment-btn').addEventListener('click', function() {
-                showAppointmentModal();
-            });
-            
-            document.getElementById('save-appointment-btn').addEventListener('click', saveAppointment);
-            
-            // Calendar Views
-            document.getElementById('day-view').addEventListener('click', function() {
-                setCalendarView('day');
-            });
-            
-            document.getElementById('week-view').addEventListener('click', function() {
-                setCalendarView('week');
-            });
-            
-            document.getElementById('month-view').addEventListener('click', function() {
-                setCalendarView('month');
-            });
-            
-            // User Management
-            document.getElementById('add-user-btn').addEventListener('click', function() {
-                showUserModal();
-            });
-            
-            document.getElementById('save-user-btn').addEventListener('click', saveUser);
-            
-            // Profile and Password
-            document.getElementById('profile-form').addEventListener('submit', updateProfile);
-            document.getElementById('change-password-form').addEventListener('submit', changePassword);
-            
-            // Reports
-            document.getElementById('report-filters').addEventListener('submit', generateReport);
-        }
-
-        // Section Management
-        function showSection(sectionName) {
-            contentSections.forEach(section => {
-                section.classList.add('hidden');
-            });
-            
-            document.getElementById(`${sectionName}-section`).classList.remove('hidden');
-            currentView = sectionName;
-            
-            // Load section-specific data
-            switch(sectionName) {
-                case 'dashboard':
-                    loadDashboardData();
-                    break;
-                case 'patients':
-                    loadPatients();
-                    break;
-                case 'schedule':
-                    loadCalendar();
-                    break;
-                case 'records':
-                    loadRecords();
-                    break;
-                case 'users':
-                    loadUsers();
-                    break;
-                case 'reports':
-                    loadReportFilters();
-                    break;
-                case 'settings':
-                    loadProfile();
-                    break;
-            }
-        }
-
-        // Authentication Handlers
-        function handleLogin(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            
-            // Show loading state
-            loginText.classList.add('hidden');
-            loginLoading.classList.remove('hidden');
-            
-            auth.signInWithEmailAndPassword(email, password)
-                .then(userCredential => {
-                    // Login successful
-                    console.log('User logged in:', userCredential.user);
-                })
-                .catch(error => {
-                    // Handle errors
-                    console.error('Login error:', error);
-                    alert('Erro ao fazer login: ' + error.message);
-                    
-                    // Reset loading state
-                    loginText.classList.remove('hidden');
-                    loginLoading.classList.add('hidden');
-                });
-        }
-
-        function handlePasswordRecovery(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('recovery-email').value;
-            
-            auth.sendPasswordResetEmail(email)
-                .then(() => {
-                    alert('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
-                    passwordRecovery.classList.add('hidden');
-                })
-                .catch(error => {
-                    alert('Erro ao enviar e-mail de recuperação: ' + error.message);
-                });
-        }
-
-        function handleLogout() {
-            auth.signOut()
-                .then(() => {
-                    console.log('User signed out');
-                })
-                .catch(error => {
-                    console.error('Logout error:', error);
-                });
-        }
-
-        // Data Loading Functions
-        function loadInitialData() {
-            // Load data needed across multiple sections
-            loadPatients();
-            loadUsers();
-        }
-
-        function loadDashboardData() {
-            // Load today's appointments count
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            
-            db.collection('appointments')
-                .where('date', '>=', today)
-                .where('date', '<', tomorrow)
-                .get()
-                .then(snapshot => {
-                    document.getElementById('today-appointments').textContent = snapshot.size;
-                    
-                    // Populate today's appointments table
-                    const tbody = document.querySelector('#today-appointments-table tbody');
-                    tbody.innerHTML = '';
-                    
-                    snapshot.forEach(doc => {
-                        const appointment = doc.data();
-                        const row = document.createElement('tr');
-                        
-                        const time = new Date(appointment.date.toDate());
-                        const timeString = time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                        
-                        row.innerHTML = `
-                            <td>${timeString}</td>
-                            <td>${appointment.patientName || 'N/A'}</td>
-                            <td>${appointment.procedure}</td>
-                            <td><span class="status-badge status-${appointment.status}">${appointment.status}</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="editAppointment('${doc.id}')">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                            </td>
-                        `;
-                        
-                        tbody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading today appointments:', error);
-                });
-            
-            // Load new patients count (this month)
-            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-            
-            db.collection('patients')
-                .where('createdAt', '>=', startOfMonth)
-                .get()
-                .then(snapshot => {
-                    document.getElementById('new-patients').textContent = snapshot.size;
-                })
-                .catch(error => {
-                    console.error('Error loading new patients:', error);
-                });
-            
-            // Load procedures done count (this month)
-            db.collection('records')
-                .where('date', '>=', startOfMonth)
-                .where('status', '==', 'realizado')
-                .get()
-                .then(snapshot => {
-                    document.getElementById('procedures-done').textContent = snapshot.size;
-                })
-                .catch(error => {
-                    console.error('Error loading procedures done:', error);
-                });
-            
-            // Load pending returns
-            db.collection('appointments')
-                .where('status', '==', 'agendado')
-                .where('date', '>', new Date())
-                .orderBy('date', 'asc')
-                .limit(5)
-                .get()
-                .then(snapshot => {
-                    const returnsList = document.getElementById('pending-returns-list');
-                    returnsList.innerHTML = '';
-                    
-                    if (snapshot.empty) {
-                        returnsList.innerHTML = '<p class="text-muted">Nenhum retorno pendente</p>';
-                        document.getElementById('pending-returns').textContent = '0';
-                        return;
+                    const email = document.getElementById('login-email').value;
+                    const pass = document.getElementById('login-password').value;
+                    try {
+                        ui.toggleLoading(true);
+                        await auth.signInWithEmailAndPassword(email, pass);
+                        // O onAuthStateChanged cuidará do resto
+                    } catch (error) {
+                        alert("Erro no login: " + error.message);
+                        ui.toggleLoading(false);
                     }
-                    
-                    document.getElementById('pending-returns').textContent = snapshot.size;
-                    
-                    snapshot.forEach(doc => {
-                        const appointment = doc.data();
-                        const date = new Date(appointment.date.toDate());
-                        const dateString = date.toLocaleDateString('pt-BR');
-                        const timeString = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                        
-                        const item = document.createElement('div');
-                        item.className = 'd-flex align-items-center mb-3';
-                        item.innerHTML = `
-                            <div class="flex-grow-1">
-                                <div class="fw-bold">${appointment.patientName}</div>
-                                <div class="text-muted small">${dateString} às ${timeString}</div>
-                            </div>
-                            <button class="btn btn-sm btn-outline-primary" onclick="editAppointment('${doc.id}')">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                        `;
-                        
-                        returnsList.appendChild(item);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading pending returns:', error);
                 });
-        }
 
-        function loadPatients() {
-            db.collection('patients').get()
-                .then(snapshot => {
-                    const tbody = document.querySelector('#patients-table tbody');
-                    tbody.innerHTML = '';
-                    
-                    snapshot.forEach(doc => {
-                        const patient = doc.data();
-                        const lastAppointment = patient.lastAppointment ? 
-                            new Date(patient.lastAppointment.toDate()).toLocaleDateString('pt-BR') : 
-                            'Nunca';
+                auth.onAuthStateChanged(async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        // Buscar Role
+                        const doc = await db.collection('users').doc(user.uid).get();
+                        currentRole = doc.exists ? doc.data().role : 'recepcao'; // Default
                         
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${patient.name}</td>
-                            <td>${patient.cpf}</td>
-                            <td>${patient.phone}</td>
-                            <td>${patient.email || '-'}</td>
-                            <td>${lastAppointment}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="editPatient('${doc.id}')">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deletePatient('${doc.id}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        `;
-                        
-                        tbody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading patients:', error);
-                });
-        }
+                        document.getElementById('login-screen').classList.add('hidden');
+                        document.getElementById('main-layout').classList.remove('hidden');
+                        document.getElementById('user-role-display').innerText = `Olá, ${user.email} (${currentRole})`;
 
-        function loadCalendar() {
-            const container = document.getElementById('calendar-container');
-            
-            if (calendarView === 'month') {
-                renderMonthCalendar(container, currentDate);
-            } else if (calendarView === 'week') {
-                renderWeekCalendar(container, currentDate);
-            } else {
-                renderDayCalendar(container, currentDate);
-            }
-        }
-
-        function renderMonthCalendar(container, date) {
-            const year = date.getFullYear();
-            const month = date.getMonth();
-            
-            const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
-            const startingDay = firstDay.getDay();
-            const monthLength = lastDay.getDate();
-            
-            const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                               'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-            
-            document.getElementById('calendar-title').textContent = `${monthNames[month]} ${year}`;
-            
-            let html = `
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Dom</th>
-                                <th>Seg</th>
-                                <th>Ter</th>
-                                <th>Qua</th>
-                                <th>Qui</th>
-                                <th>Sex</th>
-                                <th>Sáb</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-            
-            let day = 1;
-            for (let i = 0; i < 6; i++) {
-                html += '<tr>';
-                
-                for (let j = 0; j < 7; j++) {
-                    if (i === 0 && j < startingDay) {
-                        html += '<td class="calendar-day"></td>';
-                    } else if (day > monthLength) {
-                        html += '<td class="calendar-day"></td>';
-                    } else {
-                        const currentDay = new Date(year, month, day);
-                        const isToday = isSameDay(currentDay, new Date());
-                        const dayClass = isToday ? 'calendar-day today' : 'calendar-day';
-                        
-                        html += `<td class="${dayClass}" data-date="${currentDay.toISOString()}">`;
-                        html += `<div class="fw-bold">${day}</div>`;
-                        html += `<div id="day-events-${year}-${month}-${day}"></div>`;
-                        html += '</td>';
-                        day++;
-                    }
-                }
-                
-                html += '</tr>';
-                
-                if (day > monthLength) {
-                    break;
-                }
-            }
-            
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            
-            container.innerHTML = html;
-            
-            // Load appointments for the month
-            loadMonthAppointments(year, month);
-        }
-
-        function loadMonthAppointments(year, month) {
-            const startDate = new Date(year, month, 1);
-            const endDate = new Date(year, month + 1, 0);
-            endDate.setHours(23, 59, 59, 999);
-            
-            db.collection('appointments')
-                .where('date', '>=', startDate)
-                .where('date', '<=', endDate)
-                .get()
-                .then(snapshot => {
-                    const appointmentsByDay = {};
-                    
-                    snapshot.forEach(doc => {
-                        const appointment = doc.data();
-                        const appointmentDate = appointment.date.toDate();
-                        const dayKey = `${appointmentDate.getFullYear()}-${appointmentDate.getMonth()}-${appointmentDate.getDate()}`;
-                        
-                        if (!appointmentsByDay[dayKey]) {
-                            appointmentsByDay[dayKey] = [];
-                        }
-                        
-                        appointmentsByDay[dayKey].push({
-                            id: doc.id,
-                            ...appointment
-                        });
-                    });
-                    
-                    // Render appointments in calendar
-                    for (const dayKey in appointmentsByDay) {
-                        const [year, month, day] = dayKey.split('-');
-                        const container = document.getElementById(`day-events-${year}-${month}-${day}`);
-                        
-                        if (container) {
-                            appointmentsByDay[dayKey].forEach(appointment => {
-                                const time = new Date(appointment.date.toDate());
-                                const timeString = time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                                
-                                const event = document.createElement('div');
-                                event.className = 'calendar-event';
-                                event.innerHTML = `${timeString} - ${appointment.patientName}`;
-                                event.addEventListener('click', () => editAppointment(appointment.id));
-                                
-                                container.appendChild(event);
-                            });
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading month appointments:', error);
-                });
-        }
-
-        function renderWeekCalendar(container, date) {
-            // Implementation for week view
-            container.innerHTML = '<p>Visualização semanal - Em desenvolvimento</p>';
-        }
-
-        function renderDayCalendar(container, date) {
-            // Implementation for day view
-            container.innerHTML = '<p>Visualização diária - Em desenvolvimento</p>';
-        }
-
-        function setCalendarView(view) {
-            calendarView = view;
-            
-            // Update button states
-            document.getElementById('day-view').classList.remove('active');
-            document.getElementById('week-view').classList.remove('active');
-            document.getElementById('month-view').classList.remove('active');
-            document.getElementById(`${view}-view`).classList.add('active');
-            
-            loadCalendar();
-        }
-
-        function loadRecords() {
-            db.collection('records').get()
-                .then(snapshot => {
-                    const tbody = document.querySelector('#records-table tbody');
-                    tbody.innerHTML = '';
-                    
-                    snapshot.forEach(doc => {
-                        const record = doc.data();
-                        const date = new Date(record.date.toDate()).toLocaleDateString('pt-BR');
-                        
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${record.patientName}</td>
-                            <td>${date}</td>
-                            <td>${record.procedure}</td>
-                            <td>${record.dentistName}</td>
-                            <td><span class="status-badge status-${record.status}">${record.status}</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="viewRecord('${doc.id}')">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteRecord('${doc.id}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        `;
-                        
-                        tbody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading records:', error);
-                });
-        }
-
-        function loadUsers() {
-            if (currentUser.role !== 'admin') return;
-            
-            db.collection('users').get()
-                .then(snapshot => {
-                    const tbody = document.querySelector('#users-table tbody');
-                    tbody.innerHTML = '';
-                    
-                    snapshot.forEach(doc => {
-                        const user = doc.data();
-                        const lastLogin = user.lastLogin ? 
-                            new Date(user.lastLogin.toDate()).toLocaleDateString('pt-BR') : 
-                            'Nunca';
-                        
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${user.name}</td>
-                            <td>${user.email}</td>
-                            <td>${user.role}</td>
-                            <td>${user.active ? 'Ativo' : 'Inativo'}</td>
-                            <td>${lastLogin}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="editUser('${doc.id}')">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${doc.id}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        `;
-                        
-                        tbody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading users:', error);
-                });
-        }
-
-        function loadReportFilters() {
-            // Load dentists for filter
-            db.collection('users')
-                .where('role', '==', 'dentista')
-                .get()
-                .then(snapshot => {
-                    const select = document.getElementById('dentist-filter');
-                    select.innerHTML = '<option value="all">Todos</option>';
-                    
-                    snapshot.forEach(doc => {
-                        const user = doc.data();
-                        const option = document.createElement('option');
-                        option.value = doc.id;
-                        option.textContent = user.name;
-                        select.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading dentists for report:', error);
-                });
-        }
-
-        function loadProfile() {
-            if (!currentUser) return;
-            
-            db.collection('users').doc(currentUser.uid).get()
-                .then(doc => {
-                    if (doc.exists) {
-                        const userData = doc.data();
-                        document.getElementById('profile-name').value = userData.name;
-                        document.getElementById('profile-email').value = userData.email;
-                        document.getElementById('profile-phone').value = userData.phone || '';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading profile:', error);
-                });
-        }
-
-        // Modal Functions
-        function showPatientModal(patientId = null) {
-            document.getElementById('patient-id').value = patientId || '';
-            document.getElementById('patientModalLabel').textContent = patientId ? 'Editar Paciente' : 'Novo Paciente';
-            
-            if (patientId) {
-                // Load patient data
-                db.collection('patients').doc(patientId).get()
-                    .then(doc => {
-                        if (doc.exists) {
-                            const patient = doc.data();
-                            document.getElementById('patient-name').value = patient.name;
-                            document.getElementById('patient-cpf').value = patient.cpf;
-                            document.getElementById('patient-phone').value = patient.phone;
-                            document.getElementById('patient-email').value = patient.email || '';
-                            document.getElementById('patient-address').value = patient.address || '';
-                            document.getElementById('patient-allergies').value = patient.allergies || '';
-                            document.getElementById('patient-conditions').value = patient.conditions || '';
-                            document.getElementById('patient-medications').value = patient.medications || '';
-                            document.getElementById('patient-history').value = patient.history || '';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading patient:', error);
-                    });
-            } else {
-                // Clear form for new patient
-                document.getElementById('patient-form').reset();
-            }
-            
-            patientModal.show();
-        }
-
-        function savePatient() {
-            const patientId = document.getElementById('patient-id').value;
-            const patientData = {
-                name: document.getElementById('patient-name').value,
-                cpf: document.getElementById('patient-cpf').value,
-                phone: document.getElementById('patient-phone').value,
-                email: document.getElementById('patient-email').value,
-                address: document.getElementById('patient-address').value,
-                allergies: document.getElementById('patient-allergies').value,
-                conditions: document.getElementById('patient-conditions').value,
-                medications: document.getElementById('patient-medications').value,
-                history: document.getElementById('patient-history').value,
-                updatedAt: new Date()
-            };
-            
-            if (!patientId) {
-                patientData.createdAt = new Date();
-            }
-            
-            const promise = patientId ? 
-                db.collection('patients').doc(patientId).update(patientData) :
-                db.collection('patients').add(patientData);
-            
-            promise
-                .then(() => {
-                    patientModal.hide();
-                    loadPatients();
-                    showNotification('Paciente salvo com sucesso!', 'success');
-                })
-                .catch(error => {
-                    console.error('Error saving patient:', error);
-                    showNotification('Erro ao salvar paciente: ' + error.message, 'error');
-                });
-        }
-
-        function showAppointmentModal(appointmentId = null) {
-            document.getElementById('appointment-id').value = appointmentId || '';
-            document.getElementById('appointmentModalLabel').textContent = appointmentId ? 'Editar Consulta' : 'Nova Consulta';
-            
-            // Load patients for dropdown
-            db.collection('patients').get()
-                .then(snapshot => {
-                    const select = document.getElementById('appointment-patient');
-                    select.innerHTML = '<option value="">Selecione um paciente</option>';
-                    
-                    snapshot.forEach(doc => {
-                        const patient = doc.data();
-                        const option = document.createElement('option');
-                        option.value = doc.id;
-                        option.textContent = patient.name;
-                        select.appendChild(option);
-                    });
-                    
-                    // Load dentists for dropdown
-                    return db.collection('users').where('role', '==', 'dentista').get();
-                })
-                .then(snapshot => {
-                    const select = document.getElementById('appointment-dentist');
-                    select.innerHTML = '<option value="">Selecione um dentista</option>';
-                    
-                    snapshot.forEach(doc => {
-                        const user = doc.data();
-                        const option = document.createElement('option');
-                        option.value = doc.id;
-                        option.textContent = user.name;
-                        select.appendChild(option);
-                    });
-                    
-                    if (appointmentId) {
-                        // Load appointment data
-                        return db.collection('appointments').doc(appointmentId).get();
-                    }
-                })
-                .then(doc => {
-                    if (appointmentId && doc.exists) {
-                        const appointment = doc.data();
-                        document.getElementById('appointment-patient').value = appointment.patientId;
-                        document.getElementById('appointment-dentist').value = appointment.dentistId;
-                        
-                        const date = new Date(appointment.date.toDate());
-                        document.getElementById('appointment-date').value = date.toISOString().split('T')[0];
-                        document.getElementById('appointment-time').value = date.toTimeString().slice(0, 5);
-                        
-                        document.getElementById('appointment-procedure').value = appointment.procedure;
-                        document.getElementById('appointment-notes').value = appointment.notes || '';
-                    } else {
-                        // Clear form for new appointment
-                        document.getElementById('appointment-form').reset();
-                    }
-                    
-                    appointmentModal.show();
-                })
-                .catch(error => {
-                    console.error('Error loading appointment data:', error);
-                });
-        }
-
-        function saveAppointment() {
-            const appointmentId = document.getElementById('appointment-id').value;
-            const patientId = document.getElementById('appointment-patient').value;
-            const dentistId = document.getElementById('appointment-dentist').value;
-            const dateStr = document.getElementById('appointment-date').value;
-            const timeStr = document.getElementById('appointment-time').value;
-            const procedure = document.getElementById('appointment-procedure').value;
-            const notes = document.getElementById('appointment-notes').value;
-            
-            if (!patientId || !dentistId || !dateStr || !timeStr || !procedure) {
-                showNotification('Preencha todos os campos obrigatórios!', 'error');
-                return;
-            }
-            
-            // Combine date and time
-            const dateTime = new Date(`${dateStr}T${timeStr}`);
-            
-            // Get patient and dentist names
-            Promise.all([
-                db.collection('patients').doc(patientId).get(),
-                db.collection('users').doc(dentistId).get()
-            ])
-            .then(([patientDoc, dentistDoc]) => {
-                if (!patientDoc.exists || !dentistDoc.exists) {
-                    throw new Error('Paciente ou dentista não encontrado');
-                }
-                
-                const appointmentData = {
-                    patientId: patientId,
-                    patientName: patientDoc.data().name,
-                    dentistId: dentistId,
-                    dentistName: dentistDoc.data().name,
-                    date: dateTime,
-                    procedure: procedure,
-                    notes: notes,
-                    status: 'agendado',
-                    updatedAt: new Date()
-                };
-                
-                if (!appointmentId) {
-                    appointmentData.createdAt = new Date();
-                    appointmentData.createdBy = currentUser.uid;
-                }
-                
-                const promise = appointmentId ? 
-                    db.collection('appointments').doc(appointmentId).update(appointmentData) :
-                    db.collection('appointments').add(appointmentData);
-                
-                return promise;
-            })
-            .then(() => {
-                appointmentModal.hide();
-                loadCalendar();
-                if (currentView === 'dashboard') {
-                    loadDashboardData();
-                }
-                showNotification('Consulta salva com sucesso!', 'success');
-            })
-            .catch(error => {
-                console.error('Error saving appointment:', error);
-                showNotification('Erro ao salvar consulta: ' + error.message, 'error');
-            });
-        }
-
-        function showUserModal(userId = null) {
-            document.getElementById('user-id').value = userId || '';
-            document.getElementById('userModalLabel').textContent = userId ? 'Editar Usuário' : 'Novo Usuário';
-            
-            const passwordField = document.getElementById('user-password-field');
-            if (userId) {
-                passwordField.classList.add('hidden');
-                document.getElementById('user-password').removeAttribute('required');
-            } else {
-                passwordField.classList.remove('hidden');
-                document.getElementById('user-password').setAttribute('required', 'true');
-            }
-            
-            if (userId) {
-                // Load user data
-                db.collection('users').doc(userId).get()
-                    .then(doc => {
-                        if (doc.exists) {
-                            const user = doc.data();
-                            document.getElementById('user-name').value = user.name;
-                            document.getElementById('user-email').value = user.email;
-                            document.getElementById('user-role').value = user.role;
-                            document.getElementById('user-active').checked = user.active !== false;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading user:', error);
-                    });
-            } else {
-                // Clear form for new user
-                document.getElementById('user-form').reset();
-                document.getElementById('user-active').checked = true;
-            }
-            
-            userModal.show();
-        }
-
-        function saveUser() {
-            const userId = document.getElementById('user-id').value;
-            const name = document.getElementById('user-name').value;
-            const email = document.getElementById('user-email').value;
-            const role = document.getElementById('user-role').value;
-            const password = document.getElementById('user-password').value;
-            const active = document.getElementById('user-active').checked;
-            
-            if (!name || !email || !role) {
-                showNotification('Preencha todos os campos obrigatórios!', 'error');
-                return;
-            }
-            
-            const userData = {
-                name: name,
-                email: email,
-                role: role,
-                active: active,
-                updatedAt: new Date()
-            };
-            
-            let promise;
-            
-            if (userId) {
-                // Update existing user
-                promise = db.collection('users').doc(userId).update(userData);
-            } else {
-                // Create new user
-                if (!password) {
-                    showNotification('A senha é obrigatória para novos usuários!', 'error');
-                    return;
-                }
-                
-                userData.createdAt = new Date();
-                
-                // Create user in Firebase Auth
-                promise = auth.createUserWithEmailAndPassword(email, password)
-                    .then(userCredential => {
-                        // Add user data to Firestore
-                        return db.collection('users').doc(userCredential.user.uid).set(userData);
-                    });
-            }
-            
-            promise
-                .then(() => {
-                    userModal.hide();
-                    loadUsers();
-                    showNotification('Usuário salvo com sucesso!', 'success');
-                })
-                .catch(error => {
-                    console.error('Error saving user:', error);
-                    showNotification('Erro ao salvar usuário: ' + error.message, 'error');
-                });
-        }
-
-        function updateProfile(e) {
-            e.preventDefault();
-            
-            const name = document.getElementById('profile-name').value;
-            const email = document.getElementById('profile-email').value;
-            const phone = document.getElementById('profile-phone').value;
-            
-            if (!name || !email) {
-                showNotification('Preencha todos os campos obrigatórios!', 'error');
-                return;
-            }
-            
-            const userData = {
-                name: name,
-                email: email,
-                phone: phone,
-                updatedAt: new Date()
-            };
-            
-            db.collection('users').doc(currentUser.uid).update(userData)
-                .then(() => {
-                    // Update email in Firebase Auth if changed
-                    if (email !== currentUser.email) {
-                        return currentUser.updateEmail(email);
-                    }
-                })
-                .then(() => {
-                    showNotification('Perfil atualizado com sucesso!', 'success');
-                    userName.textContent = name;
-                })
-                .catch(error => {
-                    console.error('Error updating profile:', error);
-                    showNotification('Erro ao atualizar perfil: ' + error.message, 'error');
-                });
-        }
-
-        function changePassword(e) {
-            e.preventDefault();
-            
-            const currentPassword = document.getElementById('current-password').value;
-            const newPassword = document.getElementById('new-password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
-            
-            if (!currentPassword || !newPassword || !confirmPassword) {
-                showNotification('Preencha todos os campos!', 'error');
-                return;
-            }
-            
-            if (newPassword !== confirmPassword) {
-                showNotification('As senhas não coincidem!', 'error');
-                return;
-            }
-            
-            if (newPassword.length < 6) {
-                showNotification('A nova senha deve ter pelo menos 6 caracteres!', 'error');
-                return;
-            }
-            
-            // Reauthenticate user
-            const credential = firebase.auth.EmailAuthProvider.credential(
-                currentUser.email, 
-                currentPassword
-            );
-            
-            currentUser.reauthenticateWithCredential(credential)
-                .then(() => {
-                    // Update password
-                    return currentUser.updatePassword(newPassword);
-                })
-                .then(() => {
-                    document.getElementById('change-password-form').reset();
-                    showNotification('Senha alterada com sucesso!', 'success');
-                })
-                .catch(error => {
-                    console.error('Error changing password:', error);
-                    showNotification('Erro ao alterar senha: ' + error.message, 'error');
-                });
-        }
-
-        function generateReport(e) {
-            e.preventDefault();
-            
-            const reportType = document.getElementById('report-type').value;
-            const startDate = document.getElementById('start-date').value;
-            const endDate = document.getElementById('end-date').value;
-            const dentistId = document.getElementById('dentist-filter').value;
-            
-            if (!startDate || !endDate) {
-                showNotification('Selecione um período!', 'error');
-                return;
-            }
-            
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-            
-            let query = db.collection(reportType === 'patients' ? 'patients' : 
-                                    reportType === 'appointments' ? 'appointments' : 
-                                    reportType === 'procedures' ? 'records' : 'payments');
-            
-            // Add date filter for non-patient reports
-            if (reportType !== 'patients') {
-                query = query.where('date', '>=', start).where('date', '<=', end);
-            }
-            
-            // Add dentist filter if specified
-            if (dentistId !== 'all' && reportType !== 'patients') {
-                query = query.where('dentistId', '==', dentistId);
-            }
-            
-            query.get()
-                .then(snapshot => {
-                    const results = document.getElementById('report-results');
-                    results.innerHTML = `<h5>Resultados: ${snapshot.size} registros encontrados</h5>`;
-                    
-                    if (snapshot.empty) {
-                        results.innerHTML += '<p>Nenhum registro encontrado para os filtros selecionados.</p>';
-                        return;
-                    }
-                    
-                    // Create a simple table with results
-                    const table = document.createElement('table');
-                    table.className = 'table table-striped';
-                    
-                    // Add headers based on report type
-                    let headers = [];
-                    if (reportType === 'patients') {
-                        headers = ['Nome', 'CPF', 'Telefone', 'E-mail', 'Data de Cadastro'];
-                    } else if (reportType === 'appointments') {
-                        headers = ['Data', 'Paciente', 'Procedimento', 'Dentista', 'Status'];
-                    } else if (reportType === 'procedures') {
-                        headers = ['Data', 'Paciente', 'Procedimento', 'Dentista', 'Valor'];
-                    } else {
-                        headers = ['Data', 'Paciente', 'Procedimento', 'Valor', 'Status'];
-                    }
-                    
-                    let headerRow = '<tr>';
-                    headers.forEach(header => {
-                        headerRow += `<th>${header}</th>`;
-                    });
-                    headerRow += '</tr>';
-                    table.innerHTML = headerRow;
-                    
-                    // Add data rows
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        let row = '<tr>';
-                        
-                        if (reportType === 'patients') {
-                            const createdAt = data.createdAt ? 
-                                new Date(data.createdAt.toDate()).toLocaleDateString('pt-BR') : '-';
-                            row += `
-                                <td>${data.name}</td>
-                                <td>${data.cpf}</td>
-                                <td>${data.phone}</td>
-                                <td>${data.email || '-'}</td>
-                                <td>${createdAt}</td>
-                            `;
-                        } else if (reportType === 'appointments') {
-                            const date = data.date ? 
-                                new Date(data.date.toDate()).toLocaleDateString('pt-BR') : '-';
-                            row += `
-                                <td>${date}</td>
-                                <td>${data.patientName}</td>
-                                <td>${data.procedure}</td>
-                                <td>${data.dentistName}</td>
-                                <td>${data.status}</td>
-                            `;
-                        } else if (reportType === 'procedures') {
-                            const date = data.date ? 
-                                new Date(data.date.toDate()).toLocaleDateString('pt-BR') : '-';
-                            row += `
-                                <td>${date}</td>
-                                <td>${data.patientName}</td>
-                                <td>${data.procedure}</td>
-                                <td>${data.dentistName}</td>
-                                <td>R$ ${data.value || '0,00'}</td>
-                            `;
+                        // Controle de Permissões UI
+                        if(currentRole !== 'admin') {
+                            document.querySelectorAll('.role-admin').forEach(el => el.classList.add('hidden'));
                         } else {
-                            const date = data.date ? 
-                                new Date(data.date.toDate()).toLocaleDateString('pt-BR') : '-';
-                            row += `
-                                <td>${date}</td>
-                                <td>${data.patientName}</td>
-                                <td>${data.procedure}</td>
-                                <td>R$ ${data.value || '0,00'}</td>
-                                <td>${data.status}</td>
-                            `;
+                            document.querySelectorAll('.role-admin').forEach(el => el.classList.remove('hidden'));
                         }
-                        
-                        row += '</tr>';
-                        table.innerHTML += row;
-                    });
-                    
-                    results.appendChild(table);
-                    
-                    // Add export buttons
-                    const exportDiv = document.createElement('div');
-                    exportDiv.className = 'mt-3';
-                    exportDiv.innerHTML = `
-                        <button class="btn btn-primary me-2" onclick="exportToPDF()">
-                            <i class="fas fa-file-pdf me-1"></i> Exportar PDF
-                        </button>
-                        <button class="btn btn-success" onclick="exportToCSV('${reportType}')">
-                            <i class="fas fa-file-csv me-1"></i> Exportar CSV
-                        </button>
-                    `;
-                    results.appendChild(exportDiv);
-                })
-                .catch(error => {
-                    console.error('Error generating report:', error);
-                    showNotification('Erro ao gerar relatório: ' + error.message, 'error');
+
+                        router.navigate('dashboard');
+                    } else {
+                        document.getElementById('login-screen').classList.remove('hidden');
+                        document.getElementById('main-layout').classList.add('hidden');
+                        currentUser = null;
+                    }
+                    ui.toggleLoading(false);
                 });
-        }
-
-        // Utility Functions
-        function isSameDay(date1, date2) {
-            return date1.getFullYear() === date2.getFullYear() &&
-                   date1.getMonth() === date2.getMonth() &&
-                   date1.getDate() === date2.getDate();
-        }
-
-        function showNotification(message, type = 'info') {
-            // Create a simple notification
-            const notification = document.createElement('div');
-            notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
-            notification.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            
-            // Add to the top of the main content
-            const mainContent = document.querySelector('.main-content');
-            mainContent.insertBefore(notification, mainContent.firstChild);
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
+            },
+            logout: () => auth.signOut(),
+            recoverPassword: () => {
+                const email = prompt("Digite seu e-mail para recuperação:");
+                if(email) {
+                    auth.sendPasswordResetEmail(email)
+                        .then(() => alert("E-mail enviado!"))
+                        .catch(e => alert("Erro: " + e.message));
                 }
-            }, 5000);
-        }
-
-        // Global functions for inline event handlers
-        window.editPatient = function(patientId) {
-            showPatientModal(patientId);
-        };
-
-        window.deletePatient = function(patientId) {
-            if (confirm('Tem certeza que deseja excluir este paciente?')) {
-                db.collection('patients').doc(patientId).delete()
-                    .then(() => {
-                        loadPatients();
-                        showNotification('Paciente excluído com sucesso!', 'success');
-                    })
-                    .catch(error => {
-                        console.error('Error deleting patient:', error);
-                        showNotification('Erro ao excluir paciente: ' + error.message, 'error');
-                    });
             }
         };
 
-        window.editAppointment = function(appointmentId) {
-            showAppointmentModal(appointmentId);
-        };
+        // --- Módulo de Pacientes ---
+        const patientModule = {
+            modal: new bootstrap.Modal(document.getElementById('modal-paciente')),
+            
+            loadList: async () => {
+                const snapshot = await db.collection('patients').orderBy('name').limit(20).get();
+                patientModule.renderTable(snapshot.docs);
+            },
 
-        window.viewRecord = function(recordId) {
-            // Implementation for viewing record details
-            alert('Visualizar prontuário: ' + recordId);
-        };
+            search: async (term) => {
+                if(term.length < 3) { patientModule.loadList(); return; }
+                // Busca simples (Firebase não tem LIKE nativo perfeito, usando startAt)
+                const snapshot = await db.collection('patients')
+                    .orderBy('name')
+                    .startAt(term)
+                    .endAt(term + '\uf8ff')
+                    .get();
+                patientModule.renderTable(snapshot.docs);
+            },
 
-        window.deleteRecord = function(recordId) {
-            if (confirm('Tem certeza que deseja excluir este prontuário?')) {
-                db.collection('records').doc(recordId).delete()
-                    .then(() => {
-                        loadRecords();
-                        showNotification('Prontuário excluído com sucesso!', 'success');
-                    })
-                    .catch(error => {
-                        console.error('Error deleting record:', error);
-                        showNotification('Erro ao excluir prontuário: ' + error.message, 'error');
+            renderTable: (docs) => {
+                const tbody = document.getElementById('patient-list');
+                tbody.innerHTML = '';
+                docs.forEach(doc => {
+                    const data = doc.data();
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${data.name}</td>
+                            <td>${data.cpf || '-'}</td>
+                            <td>${data.phone || '-'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info text-white" onclick="patientModule.openDetail('${doc.id}')"><i class="fas fa-folder-open"></i> Prontuário</button>
+                                <button class="btn btn-sm btn-secondary" onclick="patientModule.edit('${doc.id}')"><i class="fas fa-edit"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            },
+
+            openModal: () => {
+                document.getElementById('pat-id').value = '';
+                document.getElementById('pat-nome').value = '';
+                document.getElementById('pat-cpf').value = '';
+                document.getElementById('pat-tel').value = '';
+                document.getElementById('pat-email').value = '';
+                document.getElementById('pat-endereco').value = '';
+                patientModule.modal.show();
+            },
+
+            edit: async (id) => {
+                const doc = await db.collection('patients').doc(id).get();
+                const data = doc.data();
+                document.getElementById('pat-id').value = id;
+                document.getElementById('pat-nome').value = data.name;
+                document.getElementById('pat-cpf').value = data.cpf;
+                document.getElementById('pat-tel').value = data.phone;
+                document.getElementById('pat-email').value = data.email;
+                document.getElementById('pat-endereco').value = data.address;
+                patientModule.modal.show();
+            },
+
+            save: async () => {
+                const id = document.getElementById('pat-id').value;
+                const data = {
+                    name: document.getElementById('pat-nome').value,
+                    cpf: document.getElementById('pat-cpf').value,
+                    phone: document.getElementById('pat-tel').value,
+                    email: document.getElementById('pat-email').value,
+                    address: document.getElementById('pat-endereco').value,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                try {
+                    if(id) {
+                        await db.collection('patients').doc(id).update(data);
+                    } else {
+                        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                        await db.collection('patients').add(data);
+                    }
+                    patientModule.modal.hide();
+                    patientModule.loadList();
+                    alert("Salvo com sucesso!");
+                } catch (e) {
+                    alert("Erro ao salvar: " + e.message);
+                }
+            },
+
+            // --- Prontuário ---
+            openDetail: async (id) => {
+                currentPatientId = id;
+                const doc = await db.collection('patients').doc(id).get();
+                const data = doc.data();
+                
+                document.getElementById('detail-name').innerText = data.name;
+                document.getElementById('detail-info').innerText = `CPF: ${data.cpf} | Email: ${data.email}`;
+                document.getElementById('anamnese-text').value = data.anamnese || '';
+                
+                router.navigate('patient-detail');
+                patientModule.loadEvolution(id);
+                patientModule.loadFiles(id);
+            },
+
+            saveAnamnese: async () => {
+                const text = document.getElementById('anamnese-text').value;
+                await db.collection('patients').doc(currentPatientId).update({ anamnese: text });
+                alert("Anamnese atualizada.");
+            },
+
+            addEvolution: async () => {
+                const text = document.getElementById('evo-text').value;
+                if(!text) return;
+                
+                await db.collection('patients').doc(currentPatientId).collection('evolution').add({
+                    text: text,
+                    professional: currentUser.email,
+                    date: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                document.getElementById('evo-text').value = '';
+                patientModule.loadEvolution(currentPatientId);
+            },
+
+            loadEvolution: async (id) => {
+                const container = document.getElementById('evolution-history');
+                container.innerHTML = '<p class="text-muted">Carregando...</p>';
+                
+                const snap = await db.collection('patients').doc(id).collection('evolution').orderBy('date', 'desc').get();
+                container.innerHTML = '';
+                
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const dateStr = d.date ? d.date.toDate().toLocaleString() : 'Agora';
+                    container.innerHTML += `
+                        <div class="card p-2 bg-light mb-2">
+                            <small class="text-muted"><strong>${dateStr}</strong> por ${d.professional}</small>
+                            <p class="mb-0 mt-1">${d.text}</p>
+                        </div>
+                    `;
+                });
+            },
+
+            uploadFile: async () => {
+                const fileInput = document.getElementById('file-upload-input');
+                const file = fileInput.files[0];
+                if(!file) return alert("Selecione um arquivo.");
+
+                try {
+                    ui.toggleLoading(true);
+                    const ref = storage.ref().child(`uploads/${currentPatientId}/${Date.now()}_${file.name}`);
+                    await ref.put(file);
+                    const url = await ref.getDownloadURL();
+
+                    // Salvar referência no Firestore
+                    await db.collection('patients').doc(currentPatientId).collection('files').add({
+                        name: file.name,
+                        url: url,
+                        date: firebase.firestore.FieldValue.serverTimestamp()
                     });
+
+                    ui.toggleLoading(false);
+                    fileInput.value = '';
+                    patientModule.loadFiles(currentPatientId);
+                } catch (e) {
+                    ui.toggleLoading(false);
+                    alert("Erro no upload: " + e.message);
+                }
+            },
+
+            loadFiles: async (id) => {
+                const list = document.getElementById('file-list');
+                list.innerHTML = '';
+                const snap = await db.collection('patients').doc(id).collection('files').orderBy('date', 'desc').get();
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    list.innerHTML += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            ${d.name}
+                            <a href="${d.url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i></a>
+                        </li>
+                    `;
+                });
+            },
+
+            exportPDF: () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                const name = document.getElementById('detail-name').innerText;
+                const history = document.getElementById('evolution-history').innerText;
+                
+                doc.text(`Prontuário: ${name}`, 10, 10);
+                doc.text("Histórico de Evolução:", 10, 20);
+                
+                // Split text para caber na página
+                const splitText = doc.splitTextToSize(history, 180);
+                doc.text(splitText, 10, 30);
+                
+                doc.save(`prontuario_${name}.pdf`);
             }
         };
 
-        window.editUser = function(userId) {
-            showUserModal(userId);
-        };
+        // --- Módulo de Agenda ---
+        const agendaModule = {
+            modal: new bootstrap.Modal(document.getElementById('modal-agenda')),
+            
+            loadAgenda: async () => {
+                const dateVal = document.getElementById('agenda-date-filter').value || new Date().toISOString().split('T')[0];
+                document.getElementById('agenda-date-filter').value = dateVal;
 
-        window.deleteUser = function(userId) {
-            if (confirm('Tem certeza que deseja excluir este usuário?')) {
-                db.collection('users').doc(userId).delete()
-                    .then(() => {
-                        loadUsers();
-                        showNotification('Usuário excluído com sucesso!', 'success');
-                    })
-                    .catch(error => {
-                        console.error('Error deleting user:', error);
-                        showNotification('Erro ao excluir usuário: ' + error.message, 'error');
-                    });
+                // Filtro simples por string de data (para simplificar query)
+                const start = new Date(dateVal + 'T00:00:00');
+                const end = new Date(dateVal + 'T23:59:59');
+
+                const snap = await db.collection('appointments')
+                    .where('date', '>=', start)
+                    .where('date', '<=', end)
+                    .orderBy('date')
+                    .get();
+
+                const tbody = document.getElementById('agenda-list');
+                tbody.innerHTML = '';
+                
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const time = d.date.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const statusClass = d.status === 'Confirmado' ? 'status-confirmado' : (d.status === 'Cancelado' ? 'status-cancelado' : 'status-agendado');
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${time}</td>
+                            <td>${d.patientName}</td>
+                            <td>${d.dentist}</td>
+                            <td>${d.procedure}</td>
+                            <td class="${statusClass}">${d.status}</td>
+                            <td>
+                                <button class="btn btn-sm btn-light" onclick="agendaModule.edit('${doc.id}')"><i class="fas fa-edit"></i></button>
+                                <a href="mailto:${d.patientEmail}?subject=Lembrete de Consulta&body=Olá, lembramos de sua consulta dia ${dateVal} as ${time}." class="btn btn-sm btn-warning"><i class="fas fa-envelope"></i></a>
+                            </td>
+                        </tr>
+                    `;
+                });
+            },
+
+            openModal: async () => {
+                document.getElementById('agenda-id').value = '';
+                document.getElementById('agenda-status').value = 'Agendado';
+                document.getElementById('btn-delete-agenda').classList.add('hidden');
+                
+                // Carregar pacientes para o select
+                const select = document.getElementById('agenda-paciente');
+                select.innerHTML = '';
+                const snap = await db.collection('patients').get();
+                snap.forEach(doc => {
+                    const opt = document.createElement('option');
+                    opt.value = doc.id;
+                    opt.text = doc.data().name;
+                    opt.dataset.email = doc.data().email;
+                    select.add(opt);
+                });
+
+                agendaModule.modal.show();
+            },
+
+            edit: async (id) => {
+                await agendaModule.openModal(); // Carrega select
+                const doc = await db.collection('appointments').doc(id).get();
+                const d = doc.data();
+                
+                document.getElementById('agenda-id').value = id;
+                document.getElementById('agenda-paciente').value = d.patientId;
+                
+                // Format Date for Input
+                const dt = d.date.toDate();
+                dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+                document.getElementById('agenda-data').value = dt.toISOString().slice(0,16);
+                
+                document.getElementById('agenda-proc').value = d.procedure;
+                document.getElementById('agenda-status').value = d.status;
+                document.getElementById('btn-delete-agenda').classList.remove('hidden');
+            },
+
+            save: async () => {
+                const id = document.getElementById('agenda-id').value;
+                const patSelect = document.getElementById('agenda-paciente');
+                const dateStr = document.getElementById('agenda-data').value;
+                
+                if(!dateStr) return alert("Selecione data e hora");
+
+                const data = {
+                    patientId: patSelect.value,
+                    patientName: patSelect.options[patSelect.selectedIndex].text,
+                    patientEmail: patSelect.options[patSelect.selectedIndex].dataset.email,
+                    date: new Date(dateStr),
+                    procedure: document.getElementById('agenda-proc').value,
+                    status: document.getElementById('agenda-status').value,
+                    dentist: currentUser.email // Simplificação: quem agenda é o "dono" ou pegar de um select
+                };
+
+                // Check Conflict (Simplificado)
+                // Em prod, fazer query verificando range
+                
+                if(id) {
+                    await db.collection('appointments').doc(id).update(data);
+                } else {
+                    await db.collection('appointments').add(data);
+                }
+                agendaModule.modal.hide();
+                agendaModule.loadAgenda();
+            },
+            
+            delete: async () => {
+                const id = document.getElementById('agenda-id').value;
+                if(confirm("Excluir agendamento?")) {
+                    await db.collection('appointments').doc(id).delete();
+                    agendaModule.modal.hide();
+                    agendaModule.loadAgenda();
+                }
             }
         };
 
-        window.exportToPDF = function() {
-            // Simple PDF export implementation
-            alert('Funcionalidade de exportação para PDF em desenvolvimento');
+        // --- Módulo de Usuários (Admin) ---
+        const userModule = {
+            create: async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('new-user-email').value;
+                const pass = document.getElementById('new-user-pass').value;
+                const role = document.getElementById('new-user-role').value;
+
+                // OBS: Criar usuário secundário enquanto logado requer Cloud Functions
+                // ou fazer logout, criar, e relogar.
+                // Aqui apenas salvamos no Firestore para fins de registro, 
+                // a criação real da Auth deve ser feita no Console Firebase ou via Backend real.
+                alert("Atenção: Em um app Client-Side puro, você deve criar o login no Firebase Console > Authentication. Aqui registraremos apenas os metadados de permissão.");
+
+                try {
+                    // Simulando a lógica de salvar metadados
+                    // O UID teria que vir da criação real. Usaremos email como ID temporário
+                    await db.collection('users').doc(email).set({
+                        email: email,
+                        role: role
+                    });
+                    alert("Permissão de usuário registrada. Crie a conta no Firebase Auth manualmente.");
+                    userModule.loadList();
+                } catch(e) {
+                    alert("Erro: " + e.message);
+                }
+            },
+            loadList: async () => {
+                const tbody = document.getElementById('users-list');
+                tbody.innerHTML = '';
+                const snap = await db.collection('users').get();
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    tbody.innerHTML += `<tr><td>${d.email}</td><td>${d.role}</td><td><button class="btn btn-sm btn-danger">X</button></td></tr>`;
+                });
+            }
         };
 
-        window.exportToCSV = function(reportType) {
-            // Simple CSV export implementation
-            alert('Funcionalidade de exportação para CSV em desenvolvimento');
+        // --- Dashboard & Reports ---
+        const dashboardModule = {
+            load: async () => {
+                // Contadores básicos
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                
+                const appSnap = await db.collection('appointments')
+                    .where('date', '>=', today)
+                    .where('date', '<', new Date(today.getTime() + 86400000))
+                    .get();
+                document.getElementById('dash-today-count').innerText = appSnap.size;
+
+                const patSnap = await db.collection('patients').get(); // Em prod usar count() aggregation
+                document.getElementById('dash-patient-count').innerText = patSnap.size;
+            }
         };
+        
+        const reportsModule = {
+            exportPatientsCSV: async () => {
+                const snap = await db.collection('patients').get();
+                let csv = "Nome,CPF,Email,Telefone\n";
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    csv += `"${d.name}","${d.cpf}","${d.email}","${d.phone}"\n`;
+                });
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'pacientes.csv';
+                a.click();
+            }
+        };
+
+        // Helpers
+        const ui = {
+            toggleLoading: (show) => {
+                document.getElementById('loading-overlay').classList.toggle('hidden', !show);
+            }
+        };
+
+        // Inicializa a lógica de UI
+        ui.toggleLoading(true);
+        authModule.init();
+
     </script>
 </body>
 </html>
