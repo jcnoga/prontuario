@@ -577,19 +577,19 @@ import { getAnalytics } from "firebase/analytics";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 // --- ⚙️ CONFIGURAÇÃO DO SISTEMA (COLE SUAS CHAVES AQUI) ---
-const firebaseConfig = {
-  apiKey: "AIzaSyC5lYxqNHxCOBPH-ZFK9Br4PHnOCFzUyXs",
-  authDomain: "prontuario-ee1fd.firebaseapp.com",
-  projectId: "prontuario-ee1fd",
-  storageBucket: "prontuario-ee1fd.firebasestorage.app",
-  messagingSenderId: "107787636728",
-  appId: "1:107787636728:web:480a29a155ce46f050100d",
-  measurementId: "G-SSS053XG8W"
-};
-
+// --- ⚙️ CONFIGURAÇÃO DO SISTEMA (COLE SUAS CHAVES AQUI) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyC5lYxqNHxCOBPH-ZFK9Br4PHnOCFzUyXs",
+      authDomain: "prontuario-ee1fd.firebaseapp.com",
+      projectId: "prontuario-ee1fd",
+      storageBucket: "prontuario-ee1fd.firebasestorage.app",
+      messagingSenderId: "107787636728",
+      appId: "1:107787636728:web:480a29a155ce46f050100d",
+      measurementId: "G-SSS053XG8W"
+    };
     // ----------------------------------------------------------
 
-    // Inicialização Firebase (Resiliente a config vazia para demo UI)
+    // Inicialização Firebase
     let auth, db, storage;
     try {
         const app = initializeApp(firebaseConfig);
@@ -597,7 +597,7 @@ const firebaseConfig = {
         db = getFirestore(app);
         storage = getStorage(app);
     } catch (e) {
-        console.warn("Firebase não configurado corretamente. O sistema funcionará parcialmente no modo visual, mas não salvará dados.", e);
+        console.warn("Firebase não configurado corretamente...", e);
     }
 
     const { createApp, reactive, ref: vueRef, computed, onMounted, watch } = Vue;
