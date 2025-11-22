@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SaaS Clinic - Gestão de Procedimentos</title>
+    <title>SaaS Clinic - Gestão Completa</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,28 +18,32 @@
         .section-active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        .card-proc { transition: all 0.2s; border-left: 4px solid transparent; }
-        .card-proc:hover { transform: translateY(-2px); shadow: lg; border-left-color: #8b5cf6; }
+        /* Card Effects */
+        .card-hover { transition: all 0.2s; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden">
 
     <!-- SIDEBAR -->
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col z-10">
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col z-10 hidden md:flex">
         <div class="p-6 border-b border-gray-100 flex items-center gap-2">
-            <div class="bg-purple-600 text-white w-8 h-8 rounded flex items-center justify-center font-bold">P</div>
+            <div class="bg-blue-600 text-white w-8 h-8 rounded flex items-center justify-center font-bold">C</div>
             <span class="font-bold text-gray-700">Clinic Admin</span>
         </div>
         
         <nav class="flex-1 p-4 space-y-2">
-            <!-- Botão da Nova Aba Solicitada -->
-            <button onclick="router('procedimentos')" id="nav-procedimentos" class="w-full text-left px-4 py-3 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-100 transition flex items-center gap-3 shadow-sm">
+            <!-- Botão Procedimentos -->
+            <button onclick="router('procedimentos')" id="nav-procedimentos" class="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-600 font-medium transition flex items-center gap-3">
                 <i class="fa-solid fa-list-check w-5"></i> Procedimentos
             </button>
 
+            <!-- Botão Pacientes -->
             <button onclick="router('pacientes')" id="nav-pacientes" class="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-600 font-medium transition flex items-center gap-3">
                 <i class="fa-solid fa-users w-5"></i> Pacientes
             </button>
+
+            <!-- Botão Agendamento -->
             <button onclick="router('agendamento')" id="nav-agendamento" class="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-600 font-medium transition flex items-center gap-3">
                 <i class="fa-regular fa-calendar-plus w-5"></i> Agendamento
             </button>
@@ -47,76 +51,108 @@
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 overflow-y-auto p-8 relative">
+    <main class="flex-1 overflow-y-auto p-4 md:p-8 relative">
 
         <!-- ================================================== -->
-        <!-- ABA: CADASTRO DE PROCEDIMENTOS (FOCO DO PEDIDO) -->
+        <!-- ABA 1: PROCEDIMENTOS -->
         <!-- ================================================== -->
-        <section id="view-procedimentos" class="section-view section-active max-w-5xl mx-auto">
-            
+        <section id="view-procedimentos" class="section-view max-w-6xl mx-auto">
             <header class="flex justify-between items-center mb-8">
                 <div>
-                    <h2 class="text-3xl font-bold text-gray-800">Catálogo de Serviços</h2>
-                    <p class="text-gray-500">Defina os procedimentos, preços e tempos padrões.</p>
+                    <h2 class="text-3xl font-bold text-gray-800">Procedimentos</h2>
+                    <p class="text-gray-500">Cadastre os serviços oferecidos.</p>
                 </div>
-                <div class="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-bold">
-                    <i class="fa-solid fa-tags mr-2"></i> Gestão de Tabela
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Form Procedimentos -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit sticky top-4">
+                    <h3 class="font-bold text-lg mb-4 text-purple-700">Novo Serviço</h3>
+                    <form onsubmit="event.preventDefault(); app.procedures.add();">
+                        <div class="space-y-4">
+                            <input type="text" id="proc-name" class="w-full border rounded-lg p-3 outline-none focus:border-purple-500" placeholder="Nome (Ex: Limpeza)" required>
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="number" step="0.01" id="proc-price" class="w-full border rounded-lg p-3 outline-none focus:border-purple-500" placeholder="R$ 0,00" required>
+                                <input type="number" id="proc-time" class="w-full border rounded-lg p-3 outline-none focus:border-purple-500" placeholder="Minutos" required>
+                            </div>
+                            <select id="proc-cat" class="w-full border rounded-lg p-3 bg-white">
+                                <option value="Geral">Geral</option>
+                                <option value="Estética">Estética</option>
+                                <option value="Cirurgia">Cirurgia</option>
+                            </select>
+                            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition">Salvar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Lista Procedimentos -->
+                <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4" id="procedures-list">
+                    <div class="col-span-2 text-center p-8 text-gray-400">Carregando...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================== -->
+        <!-- ABA 2: PACIENTES (NOVA FUNCIONALIDADE) -->
+        <!-- ================================================== -->
+        <section id="view-pacientes" class="section-view max-w-6xl mx-auto">
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">Cadastro de Pacientes</h2>
+                    <p class="text-gray-500">Gerencie a base de clientes da clínica.</p>
                 </div>
             </header>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                <!-- FORMULÁRIO DE CADASTRO (ESQUERDA) -->
+                <!-- Form Pacientes -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit sticky top-4">
-                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-purple-700">
-                        <i class="fa-solid fa-plus-circle"></i> Novo Procedimento
-                    </h3>
-                    <form onsubmit="event.preventDefault(); app.procedures.add();">
+                    <h3 class="font-bold text-lg mb-4 text-blue-700">Novo Paciente</h3>
+                    <form onsubmit="event.preventDefault(); app.patients.add();">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Procedimento</label>
-                                <input type="text" id="proc-name" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none" placeholder="Ex: Clareamento, Consulta..." required>
+                                <label class="text-xs font-bold text-gray-500">Nome Completo</label>
+                                <input type="text" id="pat-name" class="w-full border rounded-lg p-3 outline-none focus:border-blue-500" required>
                             </div>
-                            
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Preço (R$)</label>
-                                    <input type="number" step="0.01" id="proc-price" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none" placeholder="0,00" required>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Duração (min)</label>
-                                    <input type="number" id="proc-time" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none" placeholder="30" required>
-                                </div>
-                            </div>
-
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria (Opcional)</label>
-                                <select id="proc-cat" class="w-full border border-gray-300 rounded-lg p-2.5 bg-white">
-                                    <option value="Geral">Geral</option>
-                                    <option value="Estética">Estética</option>
-                                    <option value="Cirurgia">Cirurgia</option>
-                                    <option value="Exame">Exame</option>
-                                </select>
+                                <label class="text-xs font-bold text-gray-500">CPF</label>
+                                <input type="text" id="pat-cpf" class="w-full border rounded-lg p-3 outline-none focus:border-blue-500" placeholder="000.000.000-00">
                             </div>
-
-                            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition shadow-md flex justify-center items-center gap-2 mt-2">
-                                Salvar Item <i class="fa-solid fa-check"></i>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">Telefone / WhatsApp</label>
+                                <input type="text" id="pat-phone" class="w-full border rounded-lg p-3 outline-none focus:border-blue-500" required>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">E-mail</label>
+                                <input type="email" id="pat-email" class="w-full border rounded-lg p-3 outline-none focus:border-blue-500">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">
+                                Cadastrar Paciente
                             </button>
                         </div>
                     </form>
                 </div>
 
-                <!-- GRID DE LISTAGEM (DIREITA) -->
+                <!-- Lista Pacientes -->
                 <div class="lg:col-span-2">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-gray-700">Itens Disponíveis</h3>
-                        <button onclick="app.procedures.load()" class="text-sm text-purple-600 hover:underline"><i class="fa-solid fa-rotate"></i> Atualizar lista</button>
-                    </div>
-
-                    <div id="procedures-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- ITENS SERÃO INJETADOS AQUI PELO JS -->
-                        <div class="text-center py-10 text-gray-400 col-span-2">
-                            <i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Carregando procedimentos...
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-4 bg-gray-50 border-b flex justify-between items-center">
+                            <h3 class="font-bold text-gray-700">Base de Pacientes</h3>
+                            <button onclick="app.patients.load()" class="text-blue-600 text-sm hover:underline"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-50 text-gray-500">
+                                    <tr>
+                                        <th class="p-4">Paciente</th>
+                                        <th class="p-4">Contato</th>
+                                        <th class="p-4 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="patients-list" class="divide-y divide-gray-100">
+                                    <tr><td colspan="3" class="p-4 text-center text-gray-400">Carregando...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -124,24 +160,16 @@
             </div>
         </section>
 
-        <!-- ABA: PACIENTES (RESUMIDA) -->
-        <section id="view-pacientes" class="section-view max-w-5xl mx-auto">
-            <h2 class="text-2xl font-bold mb-4">Pacientes</h2>
-            <div class="bg-white p-8 rounded-xl text-center border border-dashed border-gray-300">
-                <p class="text-gray-500">Use a aba de Agendamento ou Procedimentos para testar o fluxo.</p>
-                <button onclick="router('procedimentos')" class="mt-4 text-purple-600 underline">Voltar para Procedimentos</button>
-            </div>
-        </section>
-
-        <!-- ABA: AGENDAMENTO (CONECTADA) -->
-        <section id="view-agendamento" class="section-view max-w-5xl mx-auto">
+        <!-- ================================================== -->
+        <!-- ABA 3: AGENDAMENTO -->
+        <!-- ================================================== -->
+        <section id="view-agendamento" class="section-view max-w-6xl mx-auto">
             <h2 class="text-2xl font-bold mb-4">Agendamento</h2>
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <label class="block font-bold mb-2">Selecione o Procedimento (Puxado da outra aba)</label>
-                <select id="select-integration-test" class="w-full border p-3 rounded-lg">
-                    <option>Carregando lista...</option>
-                </select>
-                <p class="text-sm text-gray-500 mt-2">Nota: Os itens cadastrados na aba "Procedimentos" aparecem aqui automaticamente.</p>
+            <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 text-center">
+                <i class="fa-regular fa-calendar-check text-4xl text-green-500 mb-4"></i>
+                <h3 class="text-xl font-bold text-gray-800">Integração Pronta</h3>
+                <p class="text-gray-500 mb-4">Use o menu lateral para cadastrar Pacientes e Procedimentos primeiro.</p>
+                <p class="text-sm text-gray-400">Esta tela usará os dados cadastrados nas outras abas.</p>
             </div>
         </section>
 
@@ -153,7 +181,7 @@
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 
-        // 🚨 CONFIGURE AQUI
+        // 🚨 1. COLOQUE SUAS CHAVES AQUI
 const firebaseConfig = {
   apiKey: "AIzaSyC5lYxqNHxCOBPH-ZFK9Br4PHnOCFzUyXs",
   authDomain: "prontuario-ee1fd.firebaseapp.com",
@@ -163,163 +191,132 @@ const firebaseConfig = {
   appId: "1:107787636728:web:18ee71ce1eca6d4450100d",
   measurementId: "G-4614MWTTME"
 };
-
-        // Init Firebase (Tratamento de erro se config estiver vazia)
         let db;
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-        } catch(e) {
-            console.error("Firebase não configurado.");
-        }
+        } catch(e) { console.error("Firebase config missing"); }
 
         // --- ROUTER ---
         window.router = (viewName) => {
             document.querySelectorAll('.section-view').forEach(el => el.classList.remove('section-active'));
             document.getElementById(`view-${viewName}`).classList.add('section-active');
             
-            // Update Menu Styles
+            // Menu Styles
             document.querySelectorAll('nav button').forEach(b => {
-                b.classList.remove('bg-purple-50', 'text-purple-700', 'font-bold', 'border-purple-100', 'shadow-sm');
-                b.classList.add('text-gray-600', 'hover:bg-gray-50');
+                b.className = "w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-600 font-medium transition flex items-center gap-3";
             });
             const btn = document.getElementById(`nav-${viewName}`);
-            btn.classList.remove('text-gray-600', 'hover:bg-gray-50');
-            btn.classList.add('bg-purple-50', 'text-purple-700', 'font-bold', 'border', 'border-purple-100', 'shadow-sm');
+            if(btn) btn.className = "w-full text-left px-4 py-3 rounded-lg bg-gray-100 text-gray-900 font-bold border border-gray-200 shadow-sm transition flex items-center gap-3";
 
+            // Load Data
             if(viewName === 'procedimentos') app.procedures.load();
-            if(viewName === 'agendamento') app.integration.loadDropdown();
+            if(viewName === 'pacientes') app.patients.load();
         };
 
         // --- APP LOGIC ---
         window.app = {
+            // Lógica de Procedimentos
             procedures: {
-                // 1. ADICIONAR
                 add: async () => {
-                    if(!db) return Swal.fire('Erro', 'Configure o Firebase no código HTML.', 'error');
-
                     const name = document.getElementById('proc-name').value;
                     const price = parseFloat(document.getElementById('proc-price').value);
-                    const time = parseInt(document.getElementById('proc-time').value);
+                    const time = document.getElementById('proc-time').value;
                     const cat = document.getElementById('proc-cat').value;
 
                     try {
-                        await addDoc(collection(db, "procedures"), {
-                            name, price, duration: time, category: cat,
-                            createdAt: new Date()
-                        });
-                        
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Cadastrado!',
-                            text: `${name} adicionado à tabela.`,
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                        
-                        document.querySelector('form').reset();
-                        app.procedures.load(); // Recarrega lista
-                    } catch (e) {
-                        Swal.fire('Erro', e.message, 'error');
-                    }
+                        await addDoc(collection(db, "procedures"), { name, price, duration: time, category: cat });
+                        Swal.fire('Salvo!', 'Procedimento cadastrado.', 'success');
+                        document.getElementById('proc-name').value = ''; // Limpa campo
+                        document.getElementById('proc-price').value = ''; 
+                        app.procedures.load();
+                    } catch(e) { Swal.fire('Erro', e.message, 'error'); }
                 },
-
-                // 2. LISTAR
                 load: async () => {
-                    if(!db) return;
                     const list = document.getElementById('procedures-list');
-                    // Query ordenada por nome seria ideal, mas exige índice. Usando padrão.
-                    const q = query(collection(db, "procedures")); 
-                    const snap = await getDocs(q);
-
+                    const snap = await getDocs(collection(db, "procedures"));
                     list.innerHTML = '';
-
-                    if(snap.empty) {
-                        list.innerHTML = `
-                            <div class="col-span-2 text-center p-8 border-2 border-dashed border-gray-300 rounded-xl">
-                                <p class="text-gray-400">Nenhum procedimento cadastrado ainda.</p>
-                            </div>`;
-                        return;
-                    }
-
+                    if(snap.empty) list.innerHTML = '<div class="col-span-2 text-center text-gray-400">Nenhum serviço cadastrado.</div>';
+                    
                     snap.forEach(doc => {
                         const p = doc.data();
-                        // Formatação de Moeda BRL
-                        const priceFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price);
-                        
-                        // Cor da categoria
-                        let catColor = 'bg-gray-100 text-gray-600';
-                        if(p.category === 'Estética') catColor = 'bg-pink-100 text-pink-600';
-                        if(p.category === 'Cirurgia') catColor = 'bg-blue-100 text-blue-600';
-
+                        const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price);
                         list.innerHTML += `
-                            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 card-proc relative group">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <span class="text-xs font-bold uppercase px-2 py-1 rounded-full ${catColor} mb-2 inline-block">${p.category || 'Geral'}</span>
-                                        <h4 class="font-bold text-lg text-gray-800">${p.name}</h4>
-                                        <div class="flex items-center gap-2 text-gray-500 text-sm mt-1">
-                                            <i class="fa-regular fa-clock"></i> ${p.duration} min
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="font-bold text-xl text-purple-700">${priceFmt}</div>
-                                    </div>
+                            <div class="bg-white p-4 rounded-xl border border-gray-100 card-hover relative group">
+                                <div class="text-xs font-bold uppercase text-purple-500 mb-1">${p.category}</div>
+                                <div class="font-bold text-gray-800 text-lg">${p.name}</div>
+                                <div class="flex justify-between items-center mt-2">
+                                    <span class="text-gray-500 text-sm"><i class="fa-regular fa-clock"></i> ${p.duration} min</span>
+                                    <span class="font-bold text-green-600">${fmt}</span>
                                 </div>
-                                
-                                <!-- Botão de Excluir (Só aparece no Hover) -->
-                                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
-                                    <button onclick="app.procedures.remove('${doc.id}')" class="text-red-400 hover:text-red-600 p-2" title="Excluir">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </div>
+                                <button onclick="app.common.remove('procedures', '${doc.id}')" class="absolute top-2 right-2 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         `;
                     });
-                },
-
-                // 3. REMOVER
-                remove: async (id) => {
-                    const res = await Swal.fire({
-                        title: 'Tem certeza?',
-                        text: "Isso removerá o procedimento da lista de escolhas.",
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#d33',
-                        confirmButtonText: 'Sim, excluir'
-                    });
-
-                    if(res.isConfirmed) {
-                        await deleteDoc(doc(db, "procedures", id));
-                        app.procedures.load();
-                        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
-                        Toast.fire({ icon: 'success', title: 'Procedimento removido' });
-                    }
                 }
             },
 
-            integration: {
-                loadDropdown: async () => {
-                    // Mostra como os dados da aba "Procedimentos" populam o select da aba "Agendamento"
-                    if(!db) return;
-                    const sel = document.getElementById('select-integration-test');
-                    sel.innerHTML = '<option>Carregando...</option>';
-                    
-                    const snap = await getDocs(collection(db, "procedures"));
-                    sel.innerHTML = '<option value="">Selecione um procedimento...</option>';
-                    
+            // Lógica de Pacientes (NOVO)
+            patients: {
+                add: async () => {
+                    const name = document.getElementById('pat-name').value;
+                    const cpf = document.getElementById('pat-cpf').value;
+                    const phone = document.getElementById('pat-phone').value;
+                    const email = document.getElementById('pat-email').value;
+
+                    try {
+                        await addDoc(collection(db, "patients"), { name, cpf, phone, email, createdAt: new Date() });
+                        Swal.fire('Sucesso', 'Paciente adicionado à base.', 'success');
+                        document.getElementById('pat-name').value = ''; // Reset Simples
+                        document.getElementById('pat-phone').value = '';
+                        app.patients.load();
+                    } catch(e) { Swal.fire('Erro', e.message, 'error'); }
+                },
+                load: async () => {
+                    const list = document.getElementById('patients-list');
+                    const snap = await getDocs(query(collection(db, "patients"), orderBy("name")));
+                    list.innerHTML = '';
+                    if(snap.empty) list.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400">Nenhum paciente encontrado.</td></tr>';
+
                     snap.forEach(doc => {
                         const p = doc.data();
-                        const price = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price);
-                        sel.innerHTML += `<option value="${doc.id}">${p.name} - ${price} (${p.duration}min)</option>`;
+                        list.innerHTML += `
+                            <tr class="hover:bg-slate-50 group border-b border-gray-50">
+                                <td class="p-4">
+                                    <div class="font-bold text-gray-800">${p.name}</div>
+                                    <div class="text-xs text-gray-400">CPF: ${p.cpf || '-'}</div>
+                                </td>
+                                <td class="p-4 text-sm text-gray-600">
+                                    <div><i class="fa-brands fa-whatsapp text-green-500"></i> ${p.phone}</div>
+                                    <div class="text-xs">${p.email || ''}</div>
+                                </td>
+                                <td class="p-4 text-right">
+                                    <button onclick="app.common.remove('patients', '${doc.id}')" class="text-red-400 hover:text-red-600 p-2 rounded hover:bg-red-50 transition">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
                     });
+                }
+            },
+
+            // Funções Comuns (Excluir)
+            common: {
+                remove: async (colName, id) => {
+                    const res = await Swal.fire({ title: 'Excluir?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
+                    if(res.isConfirmed) {
+                        await deleteDoc(doc(db, colName, id));
+                        if(colName === 'procedures') app.procedures.load();
+                        if(colName === 'patients') app.patients.load();
+                        Swal.fire('Excluído', '', 'success');
+                    }
                 }
             }
         };
 
-        // Start
-        window.onload = () => app.procedures.load();
-
+        // Iniciar na aba Pacientes para testar
+        window.onload = () => router('pacientes');
     </script>
 </body>
 </html>
