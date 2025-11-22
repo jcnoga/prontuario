@@ -1,901 +1,913 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="light">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OdontoSys - Sistema de Prontuário Inteligente</title>
-
-    <!-- 1. DETECTOR DE ERROS (Para você ver o que está errado na tela) -->
-    <script>
-        window.onerror = function(msg, url, line, col, error) {
-            const div = document.getElementById('error-box');
-            if(div) {
-                div.style.display = 'block';
-                div.innerHTML += `<p><strong>Erro:</strong> ${msg}<br><small>${url}:${line}</small></p>`;
-            }
-            // Remove o loader para não ficar travado
-            const loader = document.getElementById('loading-screen');
-            if(loader) loader.style.display = 'none';
-        };
-    </script>
-
-    <!-- ESTILOS E FONTES -->
+    <title>OdontoFlow Pro - Sistema de Gestão Odontológica</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#0ea5e9',
-                        secondary: '#6366f1',
-                        dark: '#0f172a',
-                        surface: '#1e293b'
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        [v-cloak] { display: none; }
-        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-        .fade-enter-from, .fade-leave-to { opacity: 0; }
-        
-        /* Scrollbar customizada */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        .dark ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #0ea5e9;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        /* Caixa de Erro */
-        #error-box {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; w: 100%;
-            background: #ef4444;
-            color: white;
-            padding: 20px;
-            z-index: 9999;
-            font-family: sans-serif;
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .hidden-section { display: none; }
+        .tooth-chart { display: grid; grid-template-columns: repeat(16, 1fr); gap: 5px; max-width: 100%; overflow-x: auto; padding: 10px; }
+        .tooth { border: 1px solid #ddd; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; transition: all 0.2s; background: white; }
+        .tooth:hover { transform: scale(1.05); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .tooth.selected { border-color: #3b82f6; background-color: #eff6ff; }
+        
+        /* Status Colors for Odontogram */
+        .status-saudavel { color: #10b981; }
+        .status-carie { color: #ef4444; }
+        .status-restaurado { color: #3b82f6; }
+        .status-ausente { color: #9ca3af; text-decoration: line-through; }
+        .status-canal { color: #8b5cf6; }
+        .status-implante { color: #f59e0b; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
         }
     </style>
-
-    <!-- BIBLIOTECAS JS (MODO GLOBAL - Mais seguro para rodar direto) -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <!-- FIREBASE (MODO COMPAT - Carrega antes da lógica) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-dark dark:text-slate-200 transition-colors duration-300 font-sans antialiased">
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
 
-<!-- Caixa de Erro Visível -->
-<div id="error-box">
-    <h3 class="font-bold text-lg">Ocorreu um erro!</h3>
-    <p>Se você estiver rodando direto do computador (arquivo), pode ser bloqueio de segurança. Tente subir no GitHub.</p>
-    <hr class="my-2 border-white/50">
-</div>
-
-<div id="app" v-cloak class="h-screen flex flex-col overflow-hidden">
-
-    <!-- NOTIFICAÇÕES TOAST -->
-    <div class="fixed top-5 right-5 z-50 flex flex-col gap-2">
-        <div v-for="notif in notifications" :key="notif.id" 
-             :class="`p-4 rounded shadow-lg text-white flex items-center gap-3 min-w-[300px] animate-bounce-in ${notif.type === 'error' ? 'bg-red-500' : notif.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`">
-            <i :class="`fas ${notif.type === 'error' ? 'fa-exclamation-circle' : notif.type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}`"></i>
-            <div>
-                <h4 class="font-bold text-sm">{{ notif.title }}</h4>
-                <p class="text-xs">{{ notif.message }}</p>
+    <!-- LOGIN OVERLAY -->
+    <div id="loginScreen" class="fixed inset-0 bg-gray-900 z-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-96">
+            <div class="text-center mb-6">
+                <i class="fas fa-tooth text-5xl text-blue-600 mb-2"></i>
+                <h2 class="text-2xl font-bold text-gray-800">OdontoFlow Pro</h2>
+                <p class="text-sm text-gray-500">Gestão Clínica Segura</p>
             </div>
+            <form onsubmit="app.login(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Usuário</label>
+                    <input type="text" id="loginUser" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="admin">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" id="loginPass" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="admin123">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200 font-semibold">Entrar no Sistema</button>
+                <p class="text-xs text-center text-gray-400 mt-4">Padrão: admin / admin123</p>
+            </form>
         </div>
     </div>
 
-    <!-- TELA DE LOADING INICIAL -->
-    <div v-if="loading" id="loading-screen" class="fixed inset-0 z-[100] bg-white dark:bg-dark flex flex-col items-center justify-center">
-        <div class="loader mb-4"></div>
-        <p class="text-primary font-semibold animate-pulse">Carregando Sistema...</p>
-    </div>
-
-    <!-- TELA DE LOGIN -->
-    <div v-if="!currentUser && !loading" class="flex-1 flex items-center justify-center bg-slate-100 dark:bg-black p-4">
-        <div class="bg-white dark:bg-surface p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200 dark:border-slate-700">
-            <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary text-2xl mb-4">
-                    <i class="fas fa-tooth"></i>
-                </div>
-                <h1 class="text-2xl font-bold text-slate-800 dark:text-white">OdontoSys</h1>
-                <p class="text-slate-500 text-sm">Prontuário Eletrônico Integrado</p>
-            </div>
-
-            <form @submit.prevent="handleLogin" class="space-y-4" v-if="authMode === 'login'">
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">E-mail</label>
-                    <input v-model="loginForm.email" type="email" required class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600 focus:ring-2 focus:ring-primary outline-none transition">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Senha</label>
-                    <input v-model="loginForm.password" type="password" required class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600 focus:ring-2 focus:ring-primary outline-none transition">
-                </div>
-                <button type="submit" class="w-full bg-primary hover:bg-sky-600 text-white font-bold py-3 rounded transition shadow-lg shadow-primary/30">
-                    <i class="fas fa-sign-in-alt mr-2"></i> Entrar
-                </button>
-            </form>
-
-            <form @submit.prevent="handleRegister" class="space-y-4" v-if="authMode === 'register'">
-                <!-- Campos de Registro -->
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Nome Completo</label>
-                    <input v-model="registerForm.name" type="text" required class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">E-mail</label>
-                    <input v-model="registerForm.email" type="email" required class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Senha</label>
-                    <input v-model="registerForm.password" type="password" required minlength="6" class="w-full p-3 rounded border dark:bg-dark dark:border-slate-600">
-                </div>
-                <div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 rounded text-xs text-yellow-700 dark:text-yellow-400">
-                    <i class="fas fa-info-circle mr-1"></i> O primeiro usuário criado será automaticamente <strong>ADMIN</strong>.
-                </div>
-                <button type="submit" class="w-full bg-secondary hover:bg-indigo-600 text-white font-bold py-3 rounded transition">
-                    <i class="fas fa-user-plus mr-2"></i> Criar Conta
-                </button>
-            </form>
-
-            <div class="mt-6 text-center text-sm">
-                <p v-if="authMode === 'login'">
-                    Não tem conta? <a href="#" @click.prevent="authMode = 'register'" class="text-primary font-bold hover:underline">Cadastre-se</a>
-                    <br>
-                    <a href="#" @click.prevent="handleResetPassword" class="text-slate-400 text-xs hover:text-slate-600">Esqueci minha senha</a>
-                </p>
-                <p v-else>
-                    Já tem conta? <a href="#" @click.prevent="authMode = 'login'" class="text-primary font-bold hover:underline">Faça Login</a>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- LAYOUT PRINCIPAL (LOGADO) -->
-    <div v-if="currentUser && !loading" class="flex h-full">
+    <!-- MAIN APP LAYOUT -->
+    <div id="appContainer" class="flex h-full hidden">
         
         <!-- SIDEBAR -->
-        <aside :class="`bg-white dark:bg-surface border-r dark:border-slate-700 flex flex-col transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`">
-            <div class="h-16 flex items-center justify-center border-b dark:border-slate-700">
-                <i class="fas fa-tooth text-primary text-2xl"></i>
-                <span v-if="sidebarOpen" class="ml-2 font-bold text-lg tracking-tight">OdontoSys</span>
+        <aside class="w-64 bg-white shadow-md flex flex-col z-10 hidden md:flex no-print">
+            <div class="p-6 border-b flex items-center gap-3">
+                <i class="fas fa-tooth text-2xl text-blue-600"></i>
+                <span class="text-xl font-bold text-gray-800">OdontoFlow</span>
             </div>
-
-            <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-2">
-                <template v-for="item in menuItems" :key="item.id">
-                    <a v-if="checkPermission(item.role)" href="#" 
-                       @click.prevent="currentView = item.id"
-                       :class="`flex items-center px-4 py-3 rounded-lg transition ${currentView === item.id ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`">
-                        <i :class="`fas ${item.icon} w-6 text-center text-lg`"></i>
-                        <span v-if="sidebarOpen" class="ml-3 font-medium text-sm">{{ item.label }}</span>
-                    </a>
-                </template>
+            <nav class="flex-1 overflow-y-auto py-4">
+                <a href="#" onclick="app.router('dashboard')" class="nav-item block px-6 py-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border-r-4 border-transparent hover:border-blue-600 transition"><i class="fas fa-home w-6"></i> Dashboard</a>
+                <a href="#" onclick="app.router('agenda')" class="nav-item block px-6 py-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border-r-4 border-transparent hover:border-blue-600 transition"><i class="fas fa-calendar-alt w-6"></i> Agenda</a>
+                <a href="#" onclick="app.router('pacientes')" class="nav-item block px-6 py-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border-r-4 border-transparent hover:border-blue-600 transition"><i class="fas fa-user-injured w-6"></i> Pacientes & Prontuário</a>
+                <a href="#" onclick="app.router('financeiro')" class="nav-item block px-6 py-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border-r-4 border-transparent hover:border-blue-600 transition"><i class="fas fa-dollar-sign w-6"></i> Financeiro</a>
+                <a href="#" onclick="app.router('estoque')" class="nav-item block px-6 py-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border-r-4 border-transparent hover:border-blue-600 transition"><i class="fas fa-boxes w-6"></i> Estoque</a>
+                <a href="#" onclick="app.router('config')" class="nav-item block px-6 py-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 border-r-4 border-transparent hover:border-blue-600 transition"><i class="fas fa-cogs w-6"></i> Configurações & Backup</a>
             </nav>
-
-            <div class="p-4 border-t dark:border-slate-700">
-                <button @click="toggleDarkMode" class="w-full flex items-center justify-center p-2 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200">
-                    <i :class="`fas ${isDark ? 'fa-sun' : 'fa-moon'}`"></i>
-                    <span v-if="sidebarOpen" class="ml-2 text-sm">{{ isDark ? 'Modo Claro' : 'Modo Escuro' }}</span>
-                </button>
-                <div class="mt-4 flex items-center overflow-hidden" v-if="sidebarOpen">
-                    <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
-                        {{ getUserInitials() }}
+            <div class="p-4 border-t bg-gray-50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">Dr</div>
+                    <div>
+                        <p class="text-sm font-semibold">Dr. Admin</p>
+                        <p class="text-xs text-gray-500">Cirurgião Dentista</p>
                     </div>
-                    <div class="ml-2 overflow-hidden">
-                        <p class="text-sm font-bold truncate">{{ userData?.name }}</p>
-                        <p class="text-xs text-slate-500 truncate capitalize">{{ userData?.role }}</p>
-                    </div>
-                    <button @click="logout" class="ml-auto text-slate-400 hover:text-red-500" title="Sair">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </button>
                 </div>
             </div>
         </aside>
 
-        <!-- CONTEÚDO PRINCIPAL -->
-        <main class="flex-1 flex flex-col bg-slate-50 dark:bg-dark overflow-hidden relative">
-            <header class="h-16 bg-white dark:bg-surface border-b dark:border-slate-700 flex items-center justify-between px-6 shadow-sm z-10">
-                <button @click="sidebarOpen = !sidebarOpen" class="text-slate-500 hover:text-primary">
-                    <i class="fas fa-bars text-xl"></i>
-                </button>
-                <h2 class="text-lg font-bold text-slate-700 dark:text-white">{{ pageTitle }}</h2>
-                <div class="flex items-center gap-4">
-                    <div class="relative">
-                        <i class="fas fa-bell text-slate-400 hover:text-primary cursor-pointer"></i>
-                        <span v-if="todayAppointments.length > 0" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                    </div>
-                </div>
-            </header>
+        <!-- MOBILE HEADER -->
+        <div class="md:hidden fixed top-0 w-full bg-white z-20 shadow-sm p-4 flex justify-between items-center no-print">
+            <span class="font-bold text-lg">OdontoFlow</span>
+            <button onclick="document.querySelector('aside').classList.toggle('hidden')" class="text-gray-600"><i class="fas fa-bars text-xl"></i></button>
+        </div>
 
-            <div class="flex-1 overflow-auto p-6">
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-8 pt-16 md:pt-8">
+            
+            <!-- DASHBOARD VIEW -->
+            <section id="view-dashboard" class="space-y-6">
+                <h2 class="text-2xl font-bold text-gray-800">Visão Geral</h2>
                 
-                <!-- VIEW: DASHBOARD -->
-                <div v-if="currentView === 'dashboard'" class="space-y-6 animate-fade-in">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div class="bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-slate-500 text-xs uppercase font-bold">Consultas Hoje</p>
-                                    <h3 class="text-3xl font-bold text-primary mt-1">{{ todayAppointments.length }}</h3>
-                                </div>
-                                <div class="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600"><i class="fas fa-calendar-day"></i></div>
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm text-gray-500">Pacientes Hoje</p>
+                                <h3 class="text-2xl font-bold" id="dash-today-count">0</h3>
                             </div>
-                        </div>
-                        <div class="bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-slate-500 text-xs uppercase font-bold">Pacientes</p>
-                                    <h3 class="text-3xl font-bold text-emerald-500 mt-1">{{ patients.length }}</h3>
-                                </div>
-                                <div class="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600"><i class="fas fa-users"></i></div>
-                            </div>
-                        </div>
-                        <div class="bg-white dark:bg-surface p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-slate-500 text-xs uppercase font-bold">Faturamento (Mês)</p>
-                                    <h3 class="text-3xl font-bold text-amber-500 mt-1">R$ {{ calculateMonthlyRevenue() }}</h3>
-                                </div>
-                                <div class="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600"><i class="fas fa-dollar-sign"></i></div>
-                            </div>
+                            <div class="bg-blue-100 p-3 rounded-full text-blue-600"><i class="fas fa-calendar-day"></i></div>
                         </div>
                     </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="bg-white dark:bg-surface rounded-xl shadow-sm p-6">
-                            <h3 class="font-bold text-lg mb-4">Próximos Atendimentos</h3>
-                            <div v-if="todayAppointments.length === 0" class="text-center py-10 text-slate-400">
-                                Nenhuma consulta hoje.
+                    <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-green-500">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm text-gray-500">Faturamento Mês</p>
+                                <h3 class="text-2xl font-bold text-green-600" id="dash-revenue">R$ 0,00</h3>
                             </div>
-                            <ul class="space-y-3">
-                                <li v-for="apt in todayAppointments" :key="apt.id" class="flex items-center justify-between p-3 bg-slate-50 dark:bg-dark rounded border dark:border-slate-700">
-                                    <div class="flex items-center gap-3">
-                                        <div class="font-mono text-primary font-bold">{{ formatTime(apt.date) }}</div>
-                                        <div>
-                                            <p class="font-bold text-sm">{{ getPatientName(apt.patientId) }}</p>
-                                            <p class="text-xs text-slate-500">{{ apt.procedure }}</p>
-                                        </div>
-                                    </div>
-                                    <span :class="`px-2 py-1 text-xs rounded-full ${getStatusClass(apt.status)}`">{{ apt.status }}</span>
-                                </li>
-                            </ul>
+                            <div class="bg-green-100 p-3 rounded-full text-green-600"><i class="fas fa-chart-line"></i></div>
                         </div>
-                        <div class="bg-white dark:bg-surface rounded-xl shadow-sm p-6">
-                            <h3 class="font-bold text-lg mb-4">Ações Rápidas</h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <button @click="openModal('addPatient')" class="p-4 rounded border dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition">
-                                    <i class="fas fa-user-plus text-primary mb-2 text-xl"></i>
-                                    <div class="font-bold text-sm">Novo Paciente</div>
-                                </button>
-                                <button @click="currentView='agenda'" class="p-4 rounded border dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition">
-                                    <i class="fas fa-calendar-plus text-secondary mb-2 text-xl"></i>
-                                    <div class="font-bold text-sm">Agendar</div>
-                                </button>
-                                <button @click="currentView='reports'" class="p-4 rounded border dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition">
-                                    <i class="fas fa-file-alt text-amber-500 mb-2 text-xl"></i>
-                                    <div class="font-bold text-sm">Relatórios</div>
-                                </button>
-                                <button @click="runSelfTests" class="p-4 rounded border dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition">
-                                    <i class="fas fa-vial text-red-500 mb-2 text-xl"></i>
-                                    <div class="font-bold text-sm">Autoteste</div>
-                                </button>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-purple-500">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm text-gray-500">Pacientes Totais</p>
+                                <h3 class="text-2xl font-bold" id="dash-total-patients">0</h3>
                             </div>
+                            <div class="bg-purple-100 p-3 rounded-full text-purple-600"><i class="fas fa-users"></i></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-red-500">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm text-gray-500">Pendências</p>
+                                <h3 class="text-2xl font-bold" id="dash-pending">0</h3>
+                            </div>
+                            <div class="bg-red-100 p-3 rounded-full text-red-600"><i class="fas fa-exclamation-circle"></i></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- VIEW: PACIENTES -->
-                <div v-if="currentView === 'patients'" class="animate-fade-in">
-                    <div class="flex justify-between items-center mb-6">
-                        <div class="relative w-64">
-                            <i class="fas fa-search absolute left-3 top-3 text-slate-400"></i>
-                            <input v-model="searchQuery" placeholder="Buscar paciente..." class="w-full pl-10 pr-4 py-2 rounded-lg border dark:bg-surface dark:border-slate-700 focus:ring-2 focus:ring-primary outline-none">
-                        </div>
-                        <button @click="openModal('addPatient')" class="bg-primary hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-medium transition">
-                            <i class="fas fa-plus mr-2"></i> Novo Paciente
-                        </button>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="font-bold mb-4">Próximos Atendimentos</h3>
+                        <ul id="dash-next-appointments" class="space-y-3">
+                            <!-- JS Injected -->
+                        </ul>
                     </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="font-bold mb-4">Faturamento Anual</h3>
+                        <canvas id="financeChart"></canvas>
+                    </div>
+                </div>
+            </section>
 
-                    <div class="bg-white dark:bg-surface rounded-xl shadow-sm overflow-hidden">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase">
-                                <tr>
-                                    <th class="px-6 py-4 font-bold">Nome</th>
-                                    <th class="px-6 py-4 font-bold">Contato</th>
-                                    <th class="px-6 py-4 font-bold text-center">Ações</th>
+            <!-- AGENDA VIEW -->
+            <section id="view-agenda" class="hidden-section space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800">Agenda</h2>
+                    <button onclick="app.openModal('appointmentModal')" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"><i class="fas fa-plus mr-2"></i>Novo Agendamento</button>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <div class="flex gap-4 mb-4">
+                        <input type="date" id="agendaDate" class="border p-2 rounded" onchange="app.renderAgenda()">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-600 text-sm uppercase">
+                                    <th class="p-3 border-b">Horário</th>
+                                    <th class="p-3 border-b">Paciente</th>
+                                    <th class="p-3 border-b">Procedimento</th>
+                                    <th class="p-3 border-b">Status</th>
+                                    <th class="p-3 border-b">Ações</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y dark:divide-slate-700">
-                                <tr v-for="p in filteredPatients" :key="p.id" class="hover:bg-slate-50 dark:hover:bg-slate-800 transition">
-                                    <td class="px-6 py-4 font-medium">{{ p.name }} <br><span class="text-xs text-slate-500">CPF: {{ p.cpf }}</span></td>
-                                    <td class="px-6 py-4">{{ p.phone }}<br><span class="text-xs text-slate-500">{{ p.email }}</span></td>
-                                    <td class="px-6 py-4 text-center">
-                                        <button @click="selectPatient(p)" class="text-primary hover:bg-primary/10 p-2 rounded transition" title="Prontuário">
-                                            <i class="fas fa-folder-open"></i>
-                                        </button>
-                                        <button @click="editPatient(p)" class="text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 p-2 rounded transition ml-2">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr v-if="filteredPatients.length === 0">
-                                    <td colspan="3" class="px-6 py-8 text-center text-slate-500">Nenhum paciente encontrado.</td>
-                                </tr>
+                            <tbody id="agendaTableBody">
+                                <!-- Rows -->
                             </tbody>
                         </table>
                     </div>
                 </div>
+            </section>
 
-                <!-- VIEW: AGENDA -->
-                <div v-if="currentView === 'agenda'" class="animate-fade-in h-full flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="flex gap-2">
-                            <button @click="changeDate(-1)" class="p-2 bg-white dark:bg-surface rounded border dark:border-slate-700"><i class="fas fa-chevron-left"></i></button>
-                            <input type="date" v-model="selectedDate" class="p-2 rounded border dark:bg-surface dark:border-slate-700">
-                            <button @click="changeDate(1)" class="p-2 bg-white dark:bg-surface rounded border dark:border-slate-700"><i class="fas fa-chevron-right"></i></button>
+            <!-- PACIENTES VIEW -->
+            <section id="view-pacientes" class="hidden-section space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800">Pacientes</h2>
+                    <button onclick="app.openPatientModal()" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"><i class="fas fa-user-plus mr-2"></i>Novo Paciente</button>
+                </div>
+                
+                <!-- Search -->
+                <div class="bg-white p-4 rounded-lg shadow-sm flex gap-2">
+                    <input type="text" id="patientSearch" placeholder="Buscar por nome, CPF ou telefone..." class="flex-1 border p-2 rounded" onkeyup="app.renderPatientList()">
+                    <button class="bg-gray-100 px-4 py-2 rounded text-gray-600"><i class="fas fa-search"></i></button>
+                </div>
+
+                <!-- Lista -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-600">
+                            <tr>
+                                <th class="p-4">Nome</th>
+                                <th class="p-4">Telefone</th>
+                                <th class="p-4">Última Visita</th>
+                                <th class="p-4 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patientListBody">
+                            <!-- List -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- PRONTUÁRIO VIEW (Detalhes do Paciente) -->
+            <section id="view-prontuario" class="hidden-section space-y-6">
+                <div class="flex items-center gap-4">
+                    <button onclick="app.router('pacientes')" class="text-gray-500 hover:text-blue-600"><i class="fas fa-arrow-left"></i> Voltar</button>
+                    <h2 class="text-2xl font-bold text-gray-800" id="prontuarioName">Nome do Paciente</h2>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex border-b bg-white rounded-t-lg overflow-x-auto">
+                    <button onclick="app.switchTab('tab-dados')" class="tab-btn active px-6 py-3 border-b-2 border-blue-600 text-blue-600 font-medium">Dados Pessoais</button>
+                    <button onclick="app.switchTab('tab-anamnese')" class="tab-btn px-6 py-3 border-b-2 border-transparent text-gray-500 hover:text-blue-600">Anamnese</button>
+                    <button onclick="app.switchTab('tab-odontograma')" class="tab-btn px-6 py-3 border-b-2 border-transparent text-gray-500 hover:text-blue-600">Odontograma & Plano</button>
+                    <button onclick="app.switchTab('tab-evolucao')" class="tab-btn px-6 py-3 border-b-2 border-transparent text-gray-500 hover:text-blue-600">Evolução Clínica</button>
+                    <button onclick="app.switchTab('tab-financeiro-paciente')" class="tab-btn px-6 py-3 border-b-2 border-transparent text-gray-500 hover:text-blue-600">Financeiro</button>
+                </div>
+
+                <!-- Content Tabs -->
+                <div class="bg-white p-6 rounded-b-lg shadow-sm min-h-[500px]">
+                    
+                    <!-- Dados Pessoais -->
+                    <div id="tab-dados" class="tab-content space-y-4">
+                        <h3 class="font-bold text-lg mb-4">Cadastro Completo</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="patientDetailsForm">
+                            <!-- Rendered by JS -->
                         </div>
-                        <button @click="openModal('addAppointment')" class="bg-secondary text-white px-4 py-2 rounded shadow hover:shadow-lg transition">
-                            <i class="fas fa-plus mr-1"></i> Agendar
-                        </button>
+                        <div class="mt-4 flex justify-end">
+                             <button onclick="app.savePatientDetails()" class="bg-green-600 text-white px-6 py-2 rounded">Salvar Alterações</button>
+                        </div>
                     </div>
-                    <div class="bg-white dark:bg-surface rounded-lg shadow-sm flex-1 overflow-y-auto p-4 relative">
-                        <div v-for="hour in workHours" :key="hour" class="flex border-b dark:border-slate-800 py-4 group hover:bg-slate-50 dark:hover:bg-slate-800/50 relative">
-                            <div class="w-16 text-slate-400 font-mono text-sm text-right pr-4">{{ hour }}:00</div>
-                            <div class="flex-1 relative min-h-[2rem]">
-                                <div v-for="apt in getAppointmentsForHour(hour)" :key="apt.id"
-                                     @click="viewAppointment(apt)"
-                                     :class="`absolute top-0 left-0 w-full p-2 rounded border-l-4 text-xs shadow-sm cursor-pointer hover:scale-[1.01] transition z-10 ${getStatusColor(apt.status)}`">
-                                    <div class="flex justify-between font-bold">
-                                        <span>{{ getPatientName(apt.patientId) }}</span>
-                                        <span>{{ apt.status }}</span>
-                                    </div>
-                                    <div>{{ apt.procedure }} - {{ apt.dentistName }}</div>
+
+                    <!-- Anamnese -->
+                    <div id="tab-anamnese" class="tab-content hidden-section">
+                         <h3 class="font-bold text-lg mb-4">Anamnese Médica</h3>
+                         <textarea id="anamneseText" class="w-full h-64 border p-4 rounded mb-4" placeholder="Histórico médico, alergias, medicações em uso..."></textarea>
+                         <button onclick="app.saveAnamnese()" class="bg-blue-600 text-white px-6 py-2 rounded">Atualizar Anamnese</button>
+                    </div>
+
+                    <!-- Odontograma -->
+                    <div id="tab-odontograma" class="tab-content hidden-section">
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <div class="flex-1">
+                                <h3 class="font-bold text-lg mb-2">Odontograma Interativo</h3>
+                                <p class="text-sm text-gray-500 mb-4">Clique no dente para alterar o status.</p>
+                                
+                                <!-- Legenda -->
+                                <div class="flex flex-wrap gap-3 mb-4 text-xs">
+                                    <span class="px-2 py-1 rounded bg-gray-100 border text-gray-600">Clique 1x: Saudável</span>
+                                    <span class="px-2 py-1 rounded bg-red-100 text-red-600 border border-red-200">2x: Cárie</span>
+                                    <span class="px-2 py-1 rounded bg-blue-100 text-blue-600 border border-blue-200">3x: Restaurado</span>
+                                    <span class="px-2 py-1 rounded bg-purple-100 text-purple-600 border border-purple-200">4x: Canal</span>
+                                    <span class="px-2 py-1 rounded bg-yellow-100 text-yellow-600 border border-yellow-200">5x: Implante</span>
+                                    <span class="px-2 py-1 rounded bg-gray-200 text-gray-500 border border-gray-300 decoration-line-through">6x: Ausente</span>
                                 </div>
+
+                                <div id="odontogramaRender" class="tooth-chart bg-gray-50 border rounded-xl">
+                                    <!-- Teeth rendered by JS -->
+                                </div>
+                            </div>
+                            
+                            <div class="w-full md:w-1/3 bg-gray-50 p-4 rounded border">
+                                <h4 class="font-bold mb-2">Plano de Tratamento</h4>
+                                <div id="treatmentPlanList" class="space-y-2 mb-4 max-h-64 overflow-y-auto">
+                                    <!-- Items -->
+                                </div>
+                                <button onclick="app.addTreatmentItem()" class="w-full bg-green-600 text-white py-2 rounded mb-2">+ Adicionar Procedimento</button>
+                                <button onclick="window.print()" class="w-full bg-gray-600 text-white py-2 rounded"><i class="fas fa-print"></i> Imprimir Orçamento</button>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- VIEW: USUÁRIOS (ADMIN) -->
-                <div v-if="currentView === 'users'" class="animate-fade-in">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-xl font-bold">Gestão de Usuários</h3>
-                        <button @click="openModal('addUser')" class="bg-dark text-white dark:bg-slate-700 px-4 py-2 rounded">
-                            <i class="fas fa-user-shield mr-2"></i> Novo Usuário
-                        </button>
-                    </div>
-                    <div class="grid gap-4">
-                        <div v-for="u in users" :key="u.uid" class="bg-white dark:bg-surface p-4 rounded-lg shadow-sm border dark:border-slate-700 flex justify-between items-center">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-300">
-                                    {{ u.name.charAt(0) }}
-                                </div>
-                                <div>
-                                    <p class="font-bold">{{ u.name }} <span v-if="u.uid === currentUser.uid" class="text-xs bg-primary/20 text-primary px-1 rounded">Você</span></p>
-                                    <p class="text-xs text-slate-500">{{ u.email }}</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-4">
-                                <span :class="`px-2 py-1 text-xs rounded uppercase font-bold ${u.role === 'admin' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`">{{ u.role }}</span>
-                                <button v-if="u.uid !== currentUser.uid" @click="deleteUser(u.uid)" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
-                            </div>
+                    <!-- Evolução -->
+                    <div id="tab-evolucao" class="tab-content hidden-section">
+                        <h3 class="font-bold text-lg mb-4">Evolução do Tratamento (SOAP)</h3>
+                        <div class="flex gap-2 mb-4">
+                            <textarea id="newEvolutionNote" class="flex-1 border p-3 rounded" placeholder="Escreva a evolução de hoje (Queixa, Exame, Procedimento)..." rows="3"></textarea>
+                            <button onclick="app.addEvolution()" class="bg-blue-600 text-white px-4 rounded">Adicionar</button>
+                        </div>
+                        <div id="evolutionTimeline" class="space-y-4 border-l-2 border-gray-200 ml-4 pl-4">
+                            <!-- Timeline items -->
                         </div>
                     </div>
-                </div>
-
-                <!-- VIEW: RELATÓRIOS -->
-                <div v-if="currentView === 'reports'" class="animate-fade-in">
-                    <h3 class="text-xl font-bold mb-6">Relatórios e Exportação</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-white dark:bg-surface p-6 rounded-lg shadow-sm text-center cursor-pointer hover:border-primary border dark:border-slate-700" @click="exportToCSV('patients')">
-                            <i class="fas fa-file-csv text-4xl text-green-600 mb-3"></i>
-                            <h4 class="font-bold">Exportar Pacientes</h4>
-                            <p class="text-xs text-slate-500">Formato CSV (Excel)</p>
-                        </div>
-                        <div class="bg-white dark:bg-surface p-6 rounded-lg shadow-sm text-center cursor-pointer hover:border-primary border dark:border-slate-700" @click="backupData">
-                            <i class="fas fa-database text-4xl text-blue-600 mb-3"></i>
-                            <h4 class="font-bold">Backup Completo (JSON)</h4>
-                            <p class="text-xs text-slate-500">Baixar todos os dados</p>
-                        </div>
-                        <div class="bg-white dark:bg-surface p-6 rounded-lg shadow-sm text-center relative border dark:border-slate-700">
-                            <input type="file" ref="restoreFile" @change="restoreData" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                            <i class="fas fa-upload text-4xl text-amber-600 mb-3"></i>
-                            <h4 class="font-bold">Restaurar Backup</h4>
-                            <p class="text-xs text-slate-500">Enviar arquivo JSON</p>
-                        </div>
+                    
+                    <!-- Financeiro Paciente -->
+                    <div id="tab-financeiro-paciente" class="tab-content hidden-section">
+                        <h3 class="font-bold text-lg mb-4">Histórico Financeiro</h3>
+                         <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="p-2">Data</th>
+                                    <th class="p-2">Descrição</th>
+                                    <th class="p-2">Valor</th>
+                                    <th class="p-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patientFinanceList"></tbody>
+                        </table>
                     </div>
                 </div>
+            </section>
 
-            </div>
+            <!-- FINANCEIRO GERAL -->
+            <section id="view-financeiro" class="hidden-section space-y-6">
+                <h2 class="text-2xl font-bold text-gray-800">Gestão Financeira</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <button onclick="app.openTransactionModal('entrada')" class="bg-green-500 text-white p-4 rounded shadow hover:bg-green-600 text-left">
+                        <span class="block text-xs opacity-75">Registrar</span>
+                        <span class="font-bold text-lg">Receita / Entrada</span>
+                    </button>
+                    <button onclick="app.openTransactionModal('saida')" class="bg-red-500 text-white p-4 rounded shadow hover:bg-red-600 text-left">
+                        <span class="block text-xs opacity-75">Registrar</span>
+                        <span class="font-bold text-lg">Despesa / Conta</span>
+                    </button>
+                </div>
+                <div class="bg-white rounded shadow-sm overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-4">Data</th>
+                                <th class="p-4">Tipo</th>
+                                <th class="p-4">Descrição</th>
+                                <th class="p-4">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="financeTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- ESTOQUE -->
+            <section id="view-estoque" class="hidden-section space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800">Controle de Estoque</h2>
+                    <button onclick="app.openStockModal()" class="bg-blue-600 text-white px-4 py-2 rounded shadow">Novo Item</button>
+                </div>
+                <div class="bg-white rounded shadow-sm overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-4">Item</th>
+                                <th class="p-4">Qtd Atual</th>
+                                <th class="p-4">Mínimo</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- CONFIGURAÇÕES -->
+            <section id="view-config" class="hidden-section space-y-6">
+                <h2 class="text-2xl font-bold text-gray-800">Configurações & Dados</h2>
+                <div class="bg-white p-6 rounded shadow-sm space-y-4">
+                    <h3 class="font-bold">Backup dos Dados</h3>
+                    <p class="text-gray-600 text-sm">Como este sistema roda no seu navegador, é crucial fazer backups regulares baixando o arquivo de dados.</p>
+                    <div class="flex gap-4">
+                        <button onclick="app.exportData()" class="bg-blue-600 text-white px-4 py-2 rounded"><i class="fas fa-download"></i> Baixar Backup (JSON)</button>
+                        
+                        <label class="bg-gray-200 text-gray-700 px-4 py-2 rounded cursor-pointer hover:bg-gray-300">
+                            <i class="fas fa-upload"></i> Restaurar Backup
+                            <input type="file" class="hidden" onchange="app.importData(this)">
+                        </label>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded shadow-sm space-y-4 border-l-4 border-red-500">
+                    <h3 class="font-bold text-red-600">Zona de Perigo</h3>
+                    <p class="text-sm text-gray-500">Apagar todos os dados do sistema localmente.</p>
+                    <button onclick="app.resetSystem()" class="text-red-600 border border-red-200 px-4 py-2 rounded hover:bg-red-50">Resetar Sistema</button>
+                </div>
+            </section>
         </main>
     </div>
 
-    <!-- MODAL: NOVO PACIENTE -->
-    <div v-if="showModal === 'addPatient' || showModal === 'editPatient'" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div class="bg-white dark:bg-surface w-full max-w-2xl rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="p-6 border-b dark:border-slate-700 flex justify-between items-center">
-                <h3 class="text-xl font-bold">{{ showModal === 'addPatient' ? 'Novo Paciente' : 'Editar Paciente' }}</h3>
-                <button @click="closeModal" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
-            </div>
-            <form @submit.prevent="savePatientForm" class="p-6 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label class="text-xs font-bold uppercase text-slate-500">Nome Completo</label><input v-model="patientForm.name" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></div>
-                    <div><label class="text-xs font-bold uppercase text-slate-500">CPF</label><input v-model="patientForm.cpf" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></div>
-                    <div><label class="text-xs font-bold uppercase text-slate-500">Telefone</label><input v-model="patientForm.phone" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></div>
-                    <div><label class="text-xs font-bold uppercase text-slate-500">E-mail</label><input v-model="patientForm.email" type="email" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></div>
-                </div>
-                <div><label class="text-xs font-bold uppercase text-slate-500">Histórico Médico / Alergias</label><textarea v-model="patientForm.anamnese" rows="3" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600"></textarea></div>
-                <div class="flex justify-end gap-2 pt-4">
-                    <button type="button" @click="closeModal" class="px-4 py-2 rounded text-slate-600 hover:bg-slate-100">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 rounded bg-primary text-white font-bold hover:bg-sky-600">Salvar</button>
+    <!-- MODALS (Hidden by default) -->
+    <!-- Appointment Modal -->
+    <div id="appointmentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-96">
+            <h3 class="font-bold mb-4">Novo Agendamento</h3>
+            <form onsubmit="app.saveAppointment(event)" class="space-y-3">
+                <select id="aptPatient" class="w-full border p-2 rounded" required></select>
+                <input type="date" id="aptDate" class="w-full border p-2 rounded" required>
+                <input type="time" id="aptTime" class="w-full border p-2 rounded" required>
+                <input type="text" id="aptProc" class="w-full border p-2 rounded" placeholder="Procedimento" required>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="app.closeModal('appointmentModal')" class="text-gray-500 px-4 py-2">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Agendar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL: PRONTUÁRIO DETALHADO -->
-    <div v-if="selectedPatient" class="fixed inset-0 z-[60] bg-white dark:bg-dark flex flex-col">
-        <div class="bg-white dark:bg-surface border-b dark:border-slate-700 p-4 flex items-center justify-between shadow-sm">
-            <div class="flex items-center gap-4">
-                <button @click="selectedPatient = null" class="text-slate-500 hover:text-primary"><i class="fas fa-arrow-left text-xl"></i></button>
-                <div>
-                    <h2 class="text-xl font-bold">{{ selectedPatient.name }}</h2>
-                    <p class="text-sm text-slate-500">CPF: {{ selectedPatient.cpf }} • {{ selectedPatient.phone }}</p>
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button @click="printRecord" class="p-2 bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200" title="Imprimir PDF"><i class="fas fa-print"></i></button>
-                <button @click="openModal('addRecord')" class="px-4 py-2 bg-primary text-white rounded font-bold shadow"><i class="fas fa-plus-circle mr-2"></i> Nova Evolução</button>
-            </div>
-        </div>
-        
-        <div class="flex-1 overflow-hidden flex flex-col md:flex-row" id="patient-record-content">
-            <div class="w-full md:w-1/3 lg:w-1/4 bg-slate-50 dark:bg-slate-900 border-r dark:border-slate-700 p-6 overflow-y-auto">
-                <h4 class="font-bold text-slate-500 uppercase text-xs mb-2">Anamnese</h4>
-                <div class="bg-white dark:bg-surface p-4 rounded border dark:border-slate-700 mb-6 text-sm">
-                    {{ selectedPatient.anamnese || 'Sem registros médicos iniciais.' }}
-                </div>
+    <!-- JAVASCRIPT APP LOGIC -->
+    <script>
+        const app = {
+            data: {
+                user: null,
+                patients: [],
+                appointments: [],
+                transactions: [],
+                inventory: [],
+                config: { clinicName: 'Minha Clínica' }
+            },
+            currentPatientId: null,
 
-                <h4 class="font-bold text-slate-500 uppercase text-xs mb-2">Arquivos</h4>
-                <div class="space-y-2 mb-6">
-                    <div v-for="file in getPatientFiles(selectedPatient.id)" :key="file.url" class="flex items-center justify-between p-2 bg-white dark:bg-surface rounded border dark:border-slate-700 text-sm">
-                        <a :href="file.url" target="_blank" class="flex items-center gap-2 text-primary hover:underline truncate">
-                            <i class="fas fa-paperclip"></i> {{ file.name }}
-                        </a>
-                        <button @click="deleteFile(file)" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
-                    </div>
-                    <label class="block w-full p-2 border-2 border-dashed border-slate-300 rounded text-center text-xs text-slate-500 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
-                        <input type="file" class="hidden" @change="handleFileUpload">
-                        <i class="fas fa-cloud-upload-alt mb-1"></i> Upload Arquivo
-                    </label>
-                </div>
-            </div>
-
-            <div class="flex-1 p-6 overflow-y-auto bg-white dark:bg-dark">
-                <h3 class="text-lg font-bold mb-6">Histórico Clínico (Timeline)</h3>
-                <div class="relative pl-6 border-l-2 border-slate-200 dark:border-slate-700 space-y-8">
-                    <div v-for="record in getPatientRecords(selectedPatient.id)" :key="record.id" class="relative">
-                        <div class="absolute -left-[31px] bg-white dark:bg-dark p-1">
-                            <div class="w-4 h-4 rounded-full bg-primary"></div>
-                        </div>
-                        <div class="bg-slate-50 dark:bg-surface p-4 rounded-lg border dark:border-slate-700">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <span class="font-bold text-primary">{{ record.procedure }}</span>
-                                    <p class="text-xs text-slate-400">{{ formatDateTime(record.date) }} • Dr(a). {{ record.dentistName }}</p>
-                                </div>
-                                <span class="font-mono font-bold text-slate-600 dark:text-slate-300">R$ {{ record.cost || '0,00' }}</span>
-                            </div>
-                            <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{{ record.notes }}</p>
-                        </div>
-                    </div>
-                    <div v-if="getPatientRecords(selectedPatient.id).length === 0" class="text-slate-400 italic">
-                        Nenhum registro clínico encontrado.
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: NOVA EVOLUÇÃO -->
-    <div v-if="showModal === 'addRecord'" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div class="bg-white dark:bg-surface w-full max-w-lg rounded-xl shadow-2xl p-6">
-            <h3 class="text-xl font-bold mb-4">Registrar Atendimento</h3>
-            <form @submit.prevent="saveRecordForm" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Procedimento</label>
-                    <select v-model="recordForm.procedure" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
-                        <option>Avaliação Inicial</option>
-                        <option>Limpeza (Profilaxia)</option>
-                        <option>Restauração</option>
-                        <option>Extração</option>
-                        <option>Canal (Endodontia)</option>
-                        <option>Implante</option>
-                        <option>Ortodontia (Manutenção)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Descrição / Evolução</label>
-                    <textarea v-model="recordForm.notes" required rows="4" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600" placeholder="Descreva o que foi feito..."></textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Valor (R$)</label>
-                    <input v-model="recordForm.cost" type="number" step="0.01" class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
-                </div>
-                <div class="flex justify-end gap-2">
-                    <button type="button" @click="closeModal" class="px-4 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 rounded bg-primary text-white font-bold">Salvar Registro</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: AGENDAMENTO -->
-    <div v-if="showModal === 'addAppointment'" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div class="bg-white dark:bg-surface w-full max-w-md rounded-xl shadow-2xl p-6">
-            <h3 class="text-xl font-bold mb-4">Agendar Consulta</h3>
-            <form @submit.prevent="saveAppointmentForm" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Paciente</label>
-                    <select v-model="appointmentForm.patientId" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
-                        <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.name }}</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Data</label>
-                        <input type="date" v-model="appointmentForm.date" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Hora</label>
-                        <select v-model="appointmentForm.hour" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
-                            <option v-for="h in workHours" :value="h">{{ h }}:00</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Procedimento</label>
-                    <input v-model="appointmentForm.procedure" type="text" required class="w-full p-2 rounded border dark:bg-dark dark:border-slate-600">
-                </div>
-                <div class="flex justify-end gap-2">
-                    <button type="button" @click="closeModal" class="px-4 py-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
-                    <button type="submit" class="px-6 py-2 rounded bg-secondary text-white font-bold">Confirmar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-</div>
-
-<!-- SCRIPT PRINCIPAL (SEM MODULE PARA FUNCIONAR MELHOR) -->
-<script>
-    // --- ⚙️ CONFIGURAÇÃO DO SISTEMA (PREENCHA AQUI) ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyC5lYxqNHxCOBPH-ZFK9Br4PHnOCFzUyXs",
-      authDomain: "prontuario-ee1fd.firebaseapp.com",
-      projectId: "prontuario-ee1fd",
-      storageBucket: "prontuario-ee1fd.firebasestorage.app",
-      messagingSenderId: "107787636728",
-      appId: "1:107787636728:web:480a29a155ce46f050100d",
-      measurementId: "G-SSS053XG8W"
-    };
-    // ------------------------------------------------
-
-    // Inicializa o Firebase Globalmente
-    try {
-        firebase.initializeApp(firebaseConfig);
-        console.log("Firebase Iniciado (Compat Mode)");
-    } catch (e) {
-        console.error("Erro ao iniciar Firebase:", e);
-        alert("Erro de Configuração do Firebase. Verifique o console.");
-    }
-
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-    const storage = firebase.storage();
-
-    const { createApp, reactive, ref, computed, onMounted, watch } = Vue;
-
-    createApp({
-        setup() {
-            // --- ESTADO GLOBAL ---
-            const loading = ref(true);
-            const currentUser = ref(null);
-            const userData = ref(null);
-            const authMode = ref('login');
-            const sidebarOpen = ref(true);
-            const isDark = ref(false);
-            const currentView = ref('dashboard');
-            const notifications = ref([]);
-            
-            const patients = ref([]);
-            const appointments = ref([]);
-            const users = ref([]);
-            const records = ref([]);
-            const files = ref([]);
-
-            const showModal = ref(null);
-            const loginForm = reactive({ email: '', password: '' });
-            const registerForm = reactive({ email: '', password: '', name: '' });
-            const patientForm = reactive({ id: null, name: '', cpf: '', phone: '', email: '', anamnese: '' });
-            const recordForm = reactive({ procedure: 'Limpeza', notes: '', cost: 0 });
-            const appointmentForm = reactive({ patientId: '', date: '', hour: 9, procedure: '' });
-            const searchQuery = ref('');
-            const selectedPatient = ref(null);
-            const selectedDate = ref(new Date().toISOString().split('T')[0]);
-
-            const workHours = [8, 9, 10, 11, 13, 14, 15, 16, 17, 18];
-            const menuItems = [
-                { id: 'dashboard', label: 'Painel', icon: 'fa-chart-pie', role: 'reception' },
-                { id: 'patients', label: 'Pacientes', icon: 'fa-users', role: 'dentist' },
-                { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', role: 'reception' },
-                { id: 'users', label: 'Usuários', icon: 'fa-user-cog', role: 'admin' },
-                { id: 'reports', label: 'Relatórios', icon: 'fa-file-invoice', role: 'admin' },
-            ];
-
-            // Helpers
-            const notify = (message, type = 'info', title = 'Aviso') => {
-                const id = Date.now();
-                notifications.value.push({ id, message, type, title });
-                setTimeout(() => notifications.value = notifications.value.filter(n => n.id !== id), 4000);
-            };
-
-            const toggleDarkMode = () => {
-                isDark.value = !isDark.value;
-                if (isDark.value) document.documentElement.classList.add('dark');
-                else document.documentElement.classList.remove('dark');
-            };
-
-            const checkPermission = (requiredRole) => {
-                if (!userData.value) return false;
-                if(userData.value.role === 'admin') return true;
-                if(requiredRole === 'reception') return true;
-                if(requiredRole === 'dentist' && userData.value.role === 'dentist') return true;
-                return false;
-            };
-
-            // Dados em Tempo Real
-            const syncData = () => {
-                if(!db || !currentUser.value) return;
-                db.collection('patients').onSnapshot(snap => { patients.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); });
-                db.collection('appointments').onSnapshot(snap => { appointments.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); });
-                db.collection('records').onSnapshot(snap => { records.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); });
-                db.collection('files').onSnapshot(snap => { files.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); });
-                
-                if(userData.value?.role === 'admin') {
-                    db.collection('users').onSnapshot(snap => { users.value = snap.docs.map(d => ({ uid: d.id, ...d.data() })); });
+            // --- 1. SYSTEM STARTUP ---
+            init() {
+                // Load data from LocalStorage
+                const saved = localStorage.getItem('odontoFlowData');
+                if (saved) {
+                    this.data = JSON.parse(saved);
+                } else {
+                    // Seed Dummy Data for first run
+                    this.seedData();
                 }
-            };
 
-            // Auth
-            const handleLogin = async () => {
-                try {
-                    loading.value = true;
-                    await auth.signInWithEmailAndPassword(loginForm.email, loginForm.password);
-                    notify('Bem-vindo!', 'success');
-                } catch (e) { notify('Erro: ' + e.message, 'error'); } finally { loading.value = false; }
-            };
-
-            const handleRegister = async () => {
-                try {
-                    loading.value = true;
-                    const res = await auth.createUserWithEmailAndPassword(registerForm.email, registerForm.password);
-                    await res.user.updateProfile({ displayName: registerForm.name });
-                    
-                    const usersSnap = await db.collection('users').get();
-                    const role = usersSnap.empty ? 'admin' : 'reception';
-
-                    await db.collection('users').doc(res.user.uid).set({
-                        name: registerForm.name, email: registerForm.email, role: role, createdAt: new Date()
-                    });
-                    notify('Conta criada!', 'success');
-                } catch (e) { notify('Erro: ' + e.message, 'error'); } finally { loading.value = false; }
-            };
-
-            const handleResetPassword = async () => {
-                const email = prompt("E-mail:");
-                if(email) auth.sendPasswordResetEmail(email).then(() => notify('Email enviado.', 'success')).catch(e => notify(e.message, 'error'));
-            };
-
-            const logout = async () => {
-                await auth.signOut();
-                window.location.reload();
-            };
-
-            // Lógica Negócio
-            const savePatientForm = async () => {
-                try {
-                    const data = { ...patientForm };
-                    delete data.id; // Evitar salvar id no doc
-                    if (patientForm.id) {
-                        await db.collection('patients').doc(patientForm.id).update(data);
-                        notify('Atualizado.', 'success');
-                    } else {
-                        await db.collection('patients').add({ ...data, createdAt: new Date().toISOString() });
-                        notify('Cadastrado.', 'success');
-                    }
-                    closeModal();
-                } catch (e) { notify('Erro ao salvar', 'error'); }
-            };
-
-            const saveAppointmentForm = async () => {
-                if (appointments.value.some(a => a.date === appointmentForm.date && parseInt(a.hour) === parseInt(appointmentForm.hour) && a.status !== 'cancelado')) {
-                    return notify('Horário ocupado!', 'error');
+                // Check Login
+                if (sessionStorage.getItem('isLoggedIn')) {
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('appContainer').classList.remove('hidden');
+                    this.updateUI();
                 }
-                try {
-                    await db.collection('appointments').add({
-                        ...appointmentForm, status: 'agendado', dentistName: userData.value.name, dentistId: currentUser.value.uid
-                    });
-                    notify('Agendado.', 'success');
-                    closeModal();
-                } catch (e) { notify('Erro ao agendar', 'error'); }
-            };
+            },
 
-            const saveRecordForm = async () => {
-                try {
-                    await db.collection('records').add({
-                        patientId: selectedPatient.value.id,
-                        dentistName: userData.value.name,
-                        date: new Date().toISOString(),
-                        procedure: recordForm.procedure,
-                        notes: recordForm.notes,
-                        cost: parseFloat(recordForm.cost)
-                    });
-                    notify('Salvo.', 'success');
-                    closeModal();
-                    recordForm.notes = ''; recordForm.cost = 0;
-                } catch (e) { notify('Erro ao salvar', 'error'); }
-            };
-
-            const handleFileUpload = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                try {
-                    notify('Enviando...', 'info');
-                    const storageRef = storage.ref(`uploads/${selectedPatient.value.id}/${Date.now()}_${file.name}`);
-                    await storageRef.put(file);
-                    const url = await storageRef.getDownloadURL();
-                    await db.collection('files').add({
-                        patientId: selectedPatient.value.id, name: file.name, url: url, type: file.type, uploadedAt: new Date().toISOString()
-                    });
-                    notify('Arquivo enviado!', 'success');
-                } catch (err) { notify('Erro no upload', 'error'); }
-            };
-
-            const deleteFile = async (fileData) => {
-                if(!confirm("Excluir?")) return;
-                try { await db.collection('files').doc(fileData.id).delete(); notify('Removido.', 'success'); } catch(e) { notify('Erro', 'error'); }
-            };
-
-            const deleteUser = async (uid) => {
-                if(confirm("Remover acesso?")) { await db.collection('users').doc(uid).delete(); notify('Removido.', 'success'); }
-            };
-
-            const exportToCSV = (type) => {
-                try {
-                    const data = type === 'patients' ? patients.value : appointments.value;
-                    const ws = XLSX.utils.json_to_sheet(data);
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, type);
-                    XLSX.writeFile(wb, `odonto_export_${type}.xlsx`);
-                } catch(e) { console.error(e); notify('Erro ao exportar', 'error'); }
-            };
-
-            const printRecord = () => {
-                html2pdf().from(document.getElementById('patient-record-content')).save(`prontuario_${selectedPatient.value.name}.pdf`);
-            };
-
-            const backupData = () => {
-                const blob = new Blob([JSON.stringify({ patients: patients.value, records: records.value })], {type: "application/json"});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = "backup.json"; a.click();
-            };
-
-            const restoreData = (e) => {
-                const file = e.target.files[0];
-                if(file) {
-                    const reader = new FileReader();
-                    reader.onload = (evt) => console.log(JSON.parse(evt.target.result));
-                    reader.readAsText(file);
-                    notify('Log no console (Restore)', 'info');
+            login(e) {
+                e.preventDefault();
+                const u = document.getElementById('loginUser').value;
+                const p = document.getElementById('loginPass').value;
+                // Simple Check (In real app, use backend)
+                if (u === 'admin' && p === 'admin123') {
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('appContainer').classList.remove('hidden');
+                    this.updateUI();
+                } else {
+                    alert('Credenciais inválidas! Tente admin / admin123');
                 }
-            };
+            },
 
-            const runSelfTests = () => { notify('Testes executados (ver console).', 'info'); };
-
-            // Computed
-            const filteredPatients = computed(() => {
-                if (!searchQuery.value) return patients.value;
-                const q = searchQuery.value.toLowerCase();
-                return patients.value.filter(p => p.name.toLowerCase().includes(q) || p.cpf.includes(q));
-            });
-
-            const todayAppointments = computed(() => {
-                const today = new Date().toISOString().split('T')[0];
-                return appointments.value.filter(a => a.date === today && a.status !== 'cancelado');
-            });
-
-            const pageTitle = computed(() => menuItems.find(i => i.id === currentView.value)?.label || 'OdontoSys');
-
-            // Helpers UI
-            const getUserInitials = () => userData.value?.name ? userData.value.name.substring(0,2).toUpperCase() : 'U';
-            const getPatientName = (id) => patients.value.find(p => p.id === id)?.name || 'Desconhecido';
-            const getStatusClass = (s) => s === 'agendado' ? 'bg-blue-100 text-blue-700' : s === 'cancelado' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
-            const getStatusColor = (s) => s === 'agendado' ? 'bg-blue-100 border-blue-500 text-blue-700' : s === 'confirmado' ? 'bg-green-100 border-green-500 text-green-700' : 'bg-gray-100 border-gray-500';
-            const formatTime = (dateStr) => new Date(dateStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            const formatDateTime = (iso) => new Date(iso).toLocaleString('pt-BR');
-            const getPatientRecords = (pid) => records.value.filter(r => r.patientId === pid).sort((a,b) => new Date(b.date) - new Date(a.date));
-            const getPatientFiles = (pid) => files.value.filter(f => f.patientId === pid);
-            const calculateMonthlyRevenue = () => records.value.reduce((acc, curr) => acc + (curr.cost || 0), 0).toFixed(2);
-            
-            const closeModal = () => { showModal.value = null; };
-            const openModal = (name) => { showModal.value = name; };
-            const editPatient = (p) => { Object.assign(patientForm, p); showModal.value = 'editPatient'; };
-            const selectPatient = (p) => { selectedPatient.value = p; };
-            const changeDate = (days) => {
-                const d = new Date(selectedDate.value); d.setDate(d.getDate() + days);
-                selectedDate.value = d.toISOString().split('T')[0];
-            };
-            const getAppointmentsForHour = (hour) => appointments.value.filter(a => a.date === selectedDate.value && parseInt(a.hour) === hour && a.status !== 'cancelado');
-
-            onMounted(() => {
-                auth.onAuthStateChanged(async (user) => {
-                    if (user) {
-                        currentUser.value = user;
-                        try {
-                            const userDoc = await db.collection('users').where('email', '==', user.email).get();
-                            if (!userDoc.empty) {
-                                userData.value = { uid: user.uid, ...userDoc.docs[0].data() };
-                                syncData();
-                            } else {
-                                userData.value = { uid: user.uid, name: user.displayName, role: 'reception' };
-                            }
-                        } catch(e) { console.error(e); }
-                    } else {
-                        currentUser.value = null;
-                    }
-                    loading.value = false;
+            seedData() {
+                // Basic Dummy Data
+                this.data.patients.push({
+                    id: 1, name: 'João da Silva', phone: '11999999999', cpf: '123.456.789-00', 
+                    email: 'joao@email.com', anamnese: '', odontogram: {}, evolution: [],
+                    createdAt: new Date().toISOString()
                 });
-            });
+                this.data.appointments.push({
+                    id: Date.now(), patientId: 1, date: new Date().toISOString().split('T')[0], 
+                    time: '14:00', procedure: 'Avaliação', status: 'Pendente'
+                });
+                this.save();
+            },
 
-            return {
-                loading, currentUser, userData, authMode, sidebarOpen, isDark, currentView, notifications,
-                loginForm, registerForm, patientForm, recordForm, appointmentForm,
-                patients, appointments, users, filteredPatients, todayAppointments,
-                showModal, selectedPatient, selectedDate, workHours, menuItems,
-                handleLogin, handleRegister, logout, handleResetPassword, toggleDarkMode,
-                savePatientForm, editPatient, selectPatient, saveAppointmentForm, saveRecordForm,
-                handleFileUpload, deleteFile, deleteUser,
-                exportToCSV, printRecord, backupData, restoreData, runSelfTests,
-                openModal, closeModal, checkPermission,
-                getUserInitials, getPatientName, getStatusClass, getStatusColor, formatTime, formatDateTime,
-                getPatientRecords, getPatientFiles, calculateMonthlyRevenue,
-                changeDate, getAppointmentsForHour, pageTitle, searchQuery
-            };
-        }
-    }).mount('#app');
-</script>
+            save() {
+                localStorage.setItem('odontoFlowData', JSON.stringify(this.data));
+                this.updateUI();
+            },
+
+            // --- 2. NAVIGATION ---
+            router(viewName) {
+                // Hide all sections
+                document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden-section'));
+                // Show selected
+                document.getElementById(`view-${viewName}`).classList.remove('hidden-section');
+                // Close Sidebar on mobile
+                if(window.innerWidth < 768) document.querySelector('aside').classList.add('hidden');
+            },
+
+            updateUI() {
+                this.renderDashboard();
+                document.getElementById('agendaDate').valueAsDate = new Date();
+                this.renderAgenda();
+                this.renderFinanceChart();
+            },
+
+            // --- 3. DASHBOARD ---
+            renderDashboard() {
+                const today = new Date().toISOString().split('T')[0];
+                const todayApts = this.data.appointments.filter(a => a.date === today);
+                
+                document.getElementById('dash-today-count').innerText = todayApts.length;
+                document.getElementById('dash-total-patients').innerText = this.data.patients.length;
+                document.getElementById('dash-pending').innerText = this.data.appointments.filter(a => a.status === 'Pendente').length;
+                
+                // Calc Revenue Month
+                const currentMonth = new Date().getMonth();
+                const revenue = this.data.transactions
+                    .filter(t => t.type === 'entrada' && new Date(t.date).getMonth() === currentMonth)
+                    .reduce((acc, curr) => acc + parseFloat(curr.value), 0);
+                
+                document.getElementById('dash-revenue').innerText = `R$ ${revenue.toFixed(2)}`;
+
+                // Next Appointments List
+                const list = document.getElementById('dash-next-appointments');
+                list.innerHTML = '';
+                todayApts.slice(0, 5).forEach(apt => {
+                    const p = this.data.patients.find(pt => pt.id == apt.patientId);
+                    list.innerHTML += `
+                        <li class="flex justify-between border-b pb-2">
+                            <div><span class="font-bold text-blue-600">${apt.time}</span> - ${p ? p.name : 'Desconhecido'}</div>
+                            <span class="text-xs bg-gray-200 px-2 py-1 rounded">${apt.procedure}</span>
+                        </li>
+                    `;
+                });
+            },
+
+            // --- 4. AGENDA ---
+            renderAgenda() {
+                const date = document.getElementById('agendaDate').value;
+                const tbody = document.getElementById('agendaTableBody');
+                tbody.innerHTML = '';
+
+                const appts = this.data.appointments.filter(a => a.date === date).sort((a,b) => a.time.localeCompare(b.time));
+
+                if(appts.length === 0) tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Sem agendamentos.</td></tr>';
+
+                appts.forEach(apt => {
+                    const p = this.data.patients.find(pt => pt.id == apt.patientId);
+                    tbody.innerHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-3">${apt.time}</td>
+                            <td class="p-3 font-medium">${p ? p.name : 'Excluído'}</td>
+                            <td class="p-3">${apt.procedure}</td>
+                            <td class="p-3"><span class="px-2 py-1 rounded text-xs ${apt.status === 'Concluído' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">${apt.status}</span></td>
+                            <td class="p-3 flex gap-2">
+                                <button onclick="app.updateAppointmentStatus(${apt.id}, 'Concluído')" class="text-green-600" title="Concluir"><i class="fas fa-check"></i></button>
+                                <button onclick="app.openWhatsApp('${p ? p.phone : ''}', '${apt.date}', '${apt.time}')" class="text-green-500" title="WhatsApp"><i class="fab fa-whatsapp"></i></button>
+                                <button onclick="app.deleteAppointment(${apt.id})" class="text-red-500"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            },
+            
+            saveAppointment(e) {
+                e.preventDefault();
+                const pId = document.getElementById('aptPatient').value;
+                const date = document.getElementById('aptDate').value;
+                const time = document.getElementById('aptTime').value;
+                const proc = document.getElementById('aptProc').value;
+
+                this.data.appointments.push({
+                    id: Date.now(),
+                    patientId: parseInt(pId),
+                    date, time, procedure: proc,
+                    status: 'Pendente'
+                });
+                this.save();
+                this.closeModal('appointmentModal');
+                this.renderAgenda();
+            },
+
+            // --- 5. PATIENTS ---
+            renderPatientList() {
+                const term = document.getElementById('patientSearch').value.toLowerCase();
+                const tbody = document.getElementById('patientListBody');
+                tbody.innerHTML = '';
+
+                this.data.patients
+                    .filter(p => p.name.toLowerCase().includes(term) || p.cpf.includes(term))
+                    .forEach(p => {
+                        tbody.innerHTML += `
+                            <tr class="border-b hover:bg-gray-50 cursor-pointer" onclick="app.openPatientDetails(${p.id})">
+                                <td class="p-4 font-medium">${p.name}</td>
+                                <td class="p-4">${p.phone}</td>
+                                <td class="p-4 text-gray-500 text-sm">Ver Histórico</td>
+                                <td class="p-4 text-right"><i class="fas fa-chevron-right text-gray-400"></i></td>
+                            </tr>
+                        `;
+                    });
+            },
+
+            openPatientModal() {
+                const name = prompt("Nome do Paciente:");
+                if(name) {
+                    const newP = {
+                        id: Date.now(), name, phone: '', cpf: '', 
+                        anamnese: '', odontogram: {}, evolution: [], createdAt: new Date().toISOString()
+                    };
+                    this.data.patients.push(newP);
+                    this.save();
+                    this.openPatientDetails(newP.id);
+                }
+            },
+
+            // --- 6. PATIENT DETAILS & ODONTOGRAM ---
+            openPatientDetails(id) {
+                this.currentPatientId = id;
+                const p = this.data.patients.find(pt => pt.id === id);
+                if(!p) return;
+
+                document.getElementById('prontuarioName').innerText = p.name;
+                this.router('prontuario');
+                this.switchTab('tab-dados');
+
+                // Populate Forms
+                const formHtml = `
+                    <div><label class="text-xs text-gray-500">Nome Completo</label><input id="pd-name" value="${p.name}" class="w-full border p-2 rounded"></div>
+                    <div><label class="text-xs text-gray-500">CPF</label><input id="pd-cpf" value="${p.cpf || ''}" class="w-full border p-2 rounded"></div>
+                    <div><label class="text-xs text-gray-500">Telefone</label><input id="pd-phone" value="${p.phone || ''}" class="w-full border p-2 rounded"></div>
+                    <div><label class="text-xs text-gray-500">E-mail</label><input id="pd-email" value="${p.email || ''}" class="w-full border p-2 rounded"></div>
+                    <div class="col-span-2"><label class="text-xs text-gray-500">Endereço</label><input id="pd-address" value="${p.address || ''}" class="w-full border p-2 rounded"></div>
+                `;
+                document.getElementById('patientDetailsForm').innerHTML = formHtml;
+                document.getElementById('anamneseText').value = p.anamnese || '';
+
+                this.renderOdontogram(p);
+                this.renderEvolution(p);
+                this.renderPatientFinance(p);
+            },
+
+            savePatientDetails() {
+                const p = this.data.patients.find(pt => pt.id === this.currentPatientId);
+                p.name = document.getElementById('pd-name').value;
+                p.cpf = document.getElementById('pd-cpf').value;
+                p.phone = document.getElementById('pd-phone').value;
+                p.email = document.getElementById('pd-email').value;
+                p.address = document.getElementById('pd-address').value;
+                this.save();
+                alert('Dados salvos!');
+            },
+
+            saveAnamnese() {
+                const p = this.data.patients.find(pt => pt.id === this.currentPatientId);
+                p.anamnese = document.getElementById('anamneseText').value;
+                this.save();
+                alert('Anamnese atualizada!');
+            },
+
+            // ODONTOGRAM LOGIC
+            renderOdontogram(patient) {
+                const container = document.getElementById('odontogramaRender');
+                container.innerHTML = '';
+                // Standard Tooth Numbering (ISO 3950)
+                // 18-11, 21-28 (Upper)
+                // 48-41, 31-38 (Lower)
+                const teethOrder = [
+                    18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28,
+                    48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38
+                ];
+
+                teethOrder.forEach(num => {
+                    const statusVal = patient.odontogram[num] || 0; 
+                    // 0:Healthy, 1:Caries, 2:Restored, 3:Canal, 4:Implant, 5:Missing
+                    const statusClasses = [
+                        'status-saudavel', 'status-carie', 'status-restaurado', 
+                        'status-canal', 'status-implante', 'status-ausente'
+                    ];
+                    const icon = num >= 40 || (num >= 30 && num < 40) ? 'fa-sort-up' : 'fa-sort-down'; // Simple visual distinction
+
+                    const div = document.createElement('div');
+                    div.className = `tooth ${statusClasses[statusVal]}`;
+                    div.innerHTML = `
+                        <span class="text-xs text-gray-400 block">${num}</span>
+                        <i class="fas fa-tooth text-2xl"></i>
+                    `;
+                    div.onclick = () => {
+                        let nextStatus = (statusVal + 1) % 6;
+                        patient.odontogram[num] = nextStatus;
+                        this.save();
+                        this.renderOdontogram(patient); // Re-render
+                    };
+                    container.appendChild(div);
+                });
+            },
+
+            // EVOLUTION (SOAP)
+            addEvolution() {
+                const text = document.getElementById('newEvolutionNote').value;
+                if(!text) return;
+                const p = this.data.patients.find(pt => pt.id === this.currentPatientId);
+                p.evolution.unshift({
+                    date: new Date().toLocaleString(),
+                    note: text
+                });
+                this.save();
+                document.getElementById('newEvolutionNote').value = '';
+                this.renderEvolution(p);
+            },
+
+            renderEvolution(p) {
+                const timeline = document.getElementById('evolutionTimeline');
+                timeline.innerHTML = '';
+                p.evolution.forEach(evo => {
+                    timeline.innerHTML += `
+                        <div class="relative pb-4">
+                            <div class="absolute -left-6 mt-1 w-4 h-4 bg-blue-600 rounded-full"></div>
+                            <p class="text-xs text-gray-500">${evo.date}</p>
+                            <p class="text-gray-800 mt-1 bg-gray-50 p-3 rounded">${evo.note}</p>
+                        </div>
+                    `;
+                });
+            },
+
+            // --- 7. FINANCEIRO ---
+            openTransactionModal(type) {
+                const desc = prompt("Descrição:");
+                const val = parseFloat(prompt("Valor (ex: 150.00):"));
+                if(desc && !isNaN(val)) {
+                    this.data.transactions.push({
+                        id: Date.now(),
+                        date: new Date().toISOString().split('T')[0],
+                        type,
+                        description: desc,
+                        value: val
+                    });
+                    this.save();
+                    this.router('financeiro');
+                    this.renderFinanceTable();
+                }
+            },
+
+            renderFinanceTable() {
+                const tbody = document.getElementById('financeTableBody');
+                tbody.innerHTML = '';
+                this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+                    tbody.innerHTML += `
+                        <tr class="border-b">
+                            <td class="p-4">${t.date}</td>
+                            <td class="p-4"><span class="px-2 py-1 rounded text-xs ${t.type === 'entrada' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${t.type.toUpperCase()}</span></td>
+                            <td class="p-4">${t.description}</td>
+                            <td class="p-4 font-bold ${t.type === 'entrada' ? 'text-green-600' : 'text-red-600'}">R$ ${t.value.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+            },
+
+            renderPatientFinance(p) {
+                // Filter global transactions linked to this patient (Logic simplified: matching by name in desc or manual link needed in real app)
+                // For demo, we just show empty or placeholder. Ideally, link Transaction ID to Patient ID.
+                document.getElementById('patientFinanceList').innerHTML = `<tr><td colspan="4" class="p-2 text-gray-400 italic">Integração com módulo financeiro pendente nesta demo.</td></tr>`;
+            },
+            
+            renderFinanceChart() {
+                const ctx = document.getElementById('financeChart').getContext('2d');
+                // Simple calculation per month
+                const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                const values = new Array(12).fill(0);
+                
+                this.data.transactions.filter(t => t.type === 'entrada').forEach(t => {
+                    const m = new Date(t.date).getMonth();
+                    values[m] += parseFloat(t.value);
+                });
+
+                if(window.myChart) window.myChart.destroy();
+                window.myChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: months,
+                        datasets: [{
+                            label: 'Receita (R$)',
+                            data: values,
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+            },
+
+            // --- 8. ESTOQUE ---
+            openStockModal() {
+                const name = prompt("Nome do Produto:");
+                const qtd = parseInt(prompt("Quantidade Atual:"));
+                if(name && !isNaN(qtd)) {
+                    this.data.inventory.push({ id: Date.now(), name, qtd, min: 5 });
+                    this.save();
+                    this.renderStock();
+                }
+            },
+
+            renderStock() {
+                const tbody = document.getElementById('stockTableBody');
+                tbody.innerHTML = '';
+                this.data.inventory.forEach(item => {
+                    const status = item.qtd <= item.min ? '<span class="text-red-500 font-bold">Baixo</span>' : '<span class="text-green-500">OK</span>';
+                    tbody.innerHTML += `
+                        <tr class="border-b">
+                            <td class="p-4">${item.name}</td>
+                            <td class="p-4 font-bold">${item.qtd}</td>
+                            <td class="p-4">${item.min}</td>
+                            <td class="p-4">${status}</td>
+                            <td class="p-4">
+                                <button onclick="app.updateStock(${item.id}, 1)" class="px-2 bg-green-100 rounded">+</button>
+                                <button onclick="app.updateStock(${item.id}, -1)" class="px-2 bg-red-100 rounded">-</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            },
+            
+            updateStock(id, change) {
+                const item = this.data.inventory.find(i => i.id === id);
+                if(item) {
+                    item.qtd += change;
+                    if(item.qtd < 0) item.qtd = 0;
+                    this.save();
+                    this.renderStock();
+                }
+            },
+
+            // --- 9. UTILS & HELPERS ---
+            openModal(id) {
+                document.getElementById(id).classList.remove('hidden');
+                // Populate Patient Select
+                const sel = document.getElementById('aptPatient');
+                sel.innerHTML = '';
+                this.data.patients.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.text = p.name;
+                    sel.appendChild(opt);
+                });
+            },
+            
+            closeModal(id) { document.getElementById(id).classList.add('hidden'); },
+
+            switchTab(tabId) {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-section'));
+                document.querySelectorAll('.tab-btn').forEach(el => {
+                    el.classList.remove('border-blue-600', 'text-blue-600');
+                    el.classList.add('border-transparent', 'text-gray-500');
+                });
+                
+                document.getElementById(tabId).classList.remove('hidden-section');
+                // Highlight Button logic (simplified selector for demo)
+                event.target.classList.remove('border-transparent', 'text-gray-500');
+                event.target.classList.add('border-blue-600', 'text-blue-600');
+            },
+
+            openWhatsApp(phone, date, time) {
+                if(!phone) return alert('Paciente sem telefone cadastrado.');
+                // Remove non-numeric
+                const num = phone.replace(/\D/g, '');
+                const msg = `Olá! Confirmando sua consulta odontológica para dia ${date.split('-').reverse().join('/')} às ${time}. Podemos confirmar?`;
+                window.open(`https://wa.me/55${num}?text=${encodeURIComponent(msg)}`, '_blank');
+            },
+
+            // --- 10. BACKUP SYSTEM ---
+            exportData() {
+                const dataStr = JSON.stringify(this.data);
+                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                
+                const exportFileDefaultName = `backup_odonto_${new Date().toISOString().split('T')[0]}.json`;
+                
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.click();
+            },
+
+            importData(input) {
+                const file = input.files[0];
+                if(!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const json = JSON.parse(e.target.result);
+                        if(confirm('Isso irá substituir todos os dados atuais pelos do backup. Tem certeza?')) {
+                            this.data = json;
+                            this.save();
+                            alert('Backup restaurado com sucesso!');
+                            location.reload();
+                        }
+                    } catch(err) {
+                        alert('Erro ao ler arquivo de backup.');
+                    }
+                };
+                reader.readAsText(file);
+            },
+
+            resetSystem() {
+                if(confirm('ATENÇÃO: Isso apagará TUDO! Tem certeza?')) {
+                    localStorage.removeItem('odontoFlowData');
+                    location.reload();
+                }
+            }
+        };
+
+        // Start App
+        app.init();
+        // Pre-load some views
+        app.renderPatientList();
+        app.renderFinanceTable();
+        app.renderStock();
+    </script>
 </body>
 </html>
