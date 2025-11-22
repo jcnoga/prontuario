@@ -181,15 +181,15 @@
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // 🚨 1. COLOQUE SUAS CHAVES AQUI
-apiKey: "AIzaSyC5lYxqNHxCOBPH-ZFK9Br4PHnOCFzUyXs",
-authDomain: "prontuario-ee1fd.firebaseapp.com",
-projectId: "prontuario-ee1fd",
-storageBucket: "prontuario-ee1fd.firebasestorage.app",
-messagingSenderId: "107787636728",
-appId: "1:107787636728:web:18ee71ce1eca6d4450100d",
-measurementId: "G-4614MWTTME"
-};
-        let db;
+const firebaseConfig = {
+  apiKey: "AIzaSyC5lYxqNHxCOBPH-ZFK9Br4PHnOCFzUyXs",
+  authDomain: "prontuario-ee1fd.firebaseapp.com",
+  projectId: "prontuario-ee1fd",
+  storageBucket: "prontuario-ee1fd.firebasestorage.app",
+  messagingSenderId: "107787636728",
+  appId: "1:107787636728:web:18ee71ce1eca6d4450100d",
+  measurementId: "G-4614MWTTME"
+};   let db;
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
