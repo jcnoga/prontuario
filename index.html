@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SaaS Clinic - Fluxo Otimizado</title>
+    <title>SaaS Clinic - Gestão de Procedimentos</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,257 +13,147 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .hidden-section { display: none; }
-        .active-section { display: block; animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f3f4f6; }
+        .section-view { display: none; animation: fadeIn 0.3s ease; }
+        .section-active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Estilo para Inputs */
-        .input-std {
-            width: 100%;
-            padding: 0.5rem 1rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .input-std:focus { border-color: #3b82f6; ring: 2px; }
+        .card-proc { transition: all 0.2s; border-left: 4px solid transparent; }
+        .card-proc:hover { transform: translateY(-2px); shadow: lg; border-left-color: #8b5cf6; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 h-screen flex overflow-hidden">
-
-    <!-- LOGIN SCREEN -->
-    <div id="view-auth" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-96 text-center">
-            <h1 class="text-2xl font-bold mb-2 text-blue-600">Clinic Manager</h1>
-            <p class="text-gray-500 mb-6">Faça login para acessar</p>
-            <input type="email" id="login-email" class="input-std mb-3" placeholder="Email">
-            <input type="password" id="login-pass" class="input-std mb-4" placeholder="Senha">
-            <button onclick="app.auth.login()" class="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition">Entrar</button>
-            <p id="login-msg" class="text-red-500 text-xs mt-3 hidden"></p>
-        </div>
-    </div>
+<body class="h-screen flex overflow-hidden">
 
     <!-- SIDEBAR -->
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shadow-sm z-10">
-        <div class="p-6 flex items-center gap-2 border-b border-gray-100">
-            <div class="bg-blue-600 text-white p-2 rounded-lg"><i class="fa-solid fa-user-doctor"></i></div>
-            <span class="font-bold text-lg text-gray-700">Clinic Manager</span>
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col z-10">
+        <div class="p-6 border-b border-gray-100 flex items-center gap-2">
+            <div class="bg-purple-600 text-white w-8 h-8 rounded flex items-center justify-center font-bold">P</div>
+            <span class="font-bold text-gray-700">Clinic Admin</span>
         </div>
         
         <nav class="flex-1 p-4 space-y-2">
-            <button onclick="router('pacientes')" id="nav-pacientes" class="w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-gray-600 font-medium transition flex items-center gap-3">
-                <i class="fa-solid fa-users w-5"></i> 1. Pacientes
+            <!-- Botão da Nova Aba Solicitada -->
+            <button onclick="router('procedimentos')" id="nav-procedimentos" class="w-full text-left px-4 py-3 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-100 transition flex items-center gap-3 shadow-sm">
+                <i class="fa-solid fa-list-check w-5"></i> Procedimentos
             </button>
-            <button onclick="router('procedimentos')" id="nav-procedimentos" class="w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-gray-600 font-medium transition flex items-center gap-3">
-                <i class="fa-solid fa-list-check w-5"></i> 2. Procedimentos
+
+            <button onclick="router('pacientes')" id="nav-pacientes" class="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-600 font-medium transition flex items-center gap-3">
+                <i class="fa-solid fa-users w-5"></i> Pacientes
             </button>
-            <button onclick="router('agendamento')" id="nav-agendamento" class="w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-gray-600 font-medium transition flex items-center gap-3">
-                <i class="fa-regular fa-calendar-plus w-5"></i> 3. Agendamento
-            </button>
-            <div class="border-t border-gray-100 my-2"></div>
-            <button onclick="router('config')" id="nav-config" class="w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-gray-600 font-medium transition flex items-center gap-3">
-                <i class="fa-solid fa-sliders w-5"></i> Configurações
+            <button onclick="router('agendamento')" id="nav-agendamento" class="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-600 font-medium transition flex items-center gap-3">
+                <i class="fa-regular fa-calendar-plus w-5"></i> Agendamento
             </button>
         </nav>
-
-        <div class="p-4 border-t border-gray-200">
-            <button onclick="app.auth.logout()" class="text-sm text-red-500 hover:text-red-700 flex items-center gap-2">
-                <i class="fa-solid fa-sign-out-alt"></i> Sair do sistema
-            </button>
-        </div>
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 overflow-y-auto relative p-6">
-        
-        <!-- ABA 1: PACIENTES (CADASTRO + GRID) -->
-        <section id="sec-pacientes" class="active-section max-w-5xl mx-auto">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Gestão de Pacientes</h2>
+    <main class="flex-1 overflow-y-auto p-8 relative">
+
+        <!-- ================================================== -->
+        <!-- ABA: CADASTRO DE PROCEDIMENTOS (FOCO DO PEDIDO) -->
+        <!-- ================================================== -->
+        <section id="view-procedimentos" class="section-view section-active max-w-5xl mx-auto">
             
-            <!-- Área de Cadastro -->
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8">
-                <h3 class="font-bold text-lg mb-4 text-blue-600 border-b pb-2">Novo Cadastro</h3>
-                <form onsubmit="event.preventDefault(); app.pacientes.save();" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Nome Completo</label>
-                        <input type="text" id="p-nome" required class="input-std" placeholder="Ex: Maria Silva">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">CPF</label>
-                        <input type="text" id="p-cpf" class="input-std" placeholder="000.000.000-00">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Telefone / WhatsApp</label>
-                        <input type="text" id="p-tel" required class="input-std" placeholder="(11) 99999-9999">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Email</label>
-                        <input type="email" id="p-email" class="input-std">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Convênio</label>
-                        <input type="text" id="p-conv" class="input-std" placeholder="Ex: Particular, Unimed">
-                    </div>
-                    <div class="flex items-end">
-                        <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 shadow transition">
-                            <i class="fa-solid fa-save mr-2"></i> Salvar Paciente
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Grid de Visualização -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                    <h3 class="font-bold text-gray-700">Pacientes Cadastrados</h3>
-                    <button onclick="app.pacientes.load()" class="text-blue-600 text-sm hover:underline"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800">Catálogo de Serviços</h2>
+                    <p class="text-gray-500">Defina os procedimentos, preços e tempos padrões.</p>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-100 text-gray-600">
-                            <tr>
-                                <th class="p-4">Nome</th>
-                                <th class="p-4">Contato</th>
-                                <th class="p-4">Convênio</th>
-                                <th class="p-4 text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="grid-pacientes" class="divide-y divide-gray-100">
-                            <!-- JS Populates -->
-                        </tbody>
-                    </table>
+                <div class="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-bold">
+                    <i class="fa-solid fa-tags mr-2"></i> Gestão de Tabela
                 </div>
-            </div>
-        </section>
+            </header>
 
-        <!-- ABA 2: PROCEDIMENTOS (CADASTRO PADRÃO) -->
-        <section id="sec-procedimentos" class="hidden-section max-w-4xl mx-auto">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Catálogo de Procedimentos</h2>
-            
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8">
-                <h3 class="font-bold text-lg mb-4 text-purple-600 border-b pb-2">Adicionar Procedimento Padrão</h3>
-                <form onsubmit="event.preventDefault(); app.procedimentos.save();" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Nome do Procedimento</label>
-                        <input type="text" id="proc-nome" required class="input-std" placeholder="Ex: Limpeza Dental, Consulta Inicial">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Preço Sugerido (R$)</label>
-                        <input type="number" id="proc-preco" step="0.01" required class="input-std" placeholder="0.00">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Duração (min)</label>
-                        <input type="number" id="proc-tempo" required class="input-std" placeholder="30">
-                    </div>
-                    <div class="md:col-span-4 flex justify-end">
-                        <button type="submit" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 shadow transition">
-                            <i class="fa-solid fa-plus mr-2"></i> Adicionar ao Catálogo
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="grid-procedimentos">
-                <!-- Cards populados via JS -->
-            </div>
-        </section>
-
-        <!-- ABA 3: AGENDAMENTO (FLUXO COMPLETO) -->
-        <section id="sec-agendamento" class="hidden-section max-w-3xl mx-auto">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Novo Agendamento</h2>
-            
-            <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
-                <form onsubmit="event.preventDefault(); app.agenda.save();" class="space-y-6">
-                    
-                    <!-- Passo 1: Quem -->
-                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                        <h3 class="font-bold text-blue-700 mb-3 flex items-center gap-2"><i class="fa-solid fa-user"></i> 1. Selecionar Paciente</h3>
-                        <select id="ag-paciente-id" required class="input-std bg-white cursor-pointer">
-                            <option value="">Carregando pacientes...</option>
-                        </select>
-                        <p class="text-xs text-blue-500 mt-1">Não achou? Vá na aba Pacientes e cadastre.</p>
-                    </div>
-
-                    <!-- Passo 2: O que -->
-                    <div class="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                        <h3 class="font-bold text-purple-700 mb-3 flex items-center gap-2"><i class="fa-solid fa-stethoscope"></i> 2. Escolher Procedimento</h3>
-                        <select id="ag-proc-id" required class="input-std bg-white cursor-pointer" onchange="app.agenda.fillDetails()">
-                            <option value="">Selecione do Catálogo...</option>
-                        </select>
-                        
-                        <div class="flex gap-4 mt-4">
-                            <div class="w-1/2">
-                                <label class="text-xs font-bold text-gray-500">Valor (R$)</label>
-                                <input type="number" id="ag-valor" class="input-std bg-white" step="0.01">
-                            </div>
-                            <div class="w-1/2">
-                                <label class="text-xs font-bold text-gray-500">Duração (min)</label>
-                                <input type="number" id="ag-tempo" class="input-std bg-white">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Passo 3: Quando -->
-                    <div class="p-4 bg-orange-50 rounded-lg border border-orange-100">
-                        <h3 class="font-bold text-orange-700 mb-3 flex items-center gap-2"><i class="fa-regular fa-clock"></i> 3. Data e Hora</h3>
-                        <div class="flex gap-4">
-                            <input type="date" id="ag-data" required class="input-std bg-white">
-                            <input type="time" id="ag-hora" required class="input-std bg-white">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="w-full bg-slate-800 text-white py-4 rounded-lg font-bold text-lg hover:bg-slate-900 shadow-xl transition transform hover:-translate-y-1">
-                        Confirmar Agendamento
-                    </button>
-
-                </form>
-            </div>
-
-            <!-- Lista rápida dos últimos agendamentos -->
-            <div class="mt-8">
-                <h3 class="font-bold text-gray-600 mb-2">Agendamentos Recentes</h3>
-                <div id="lista-agendamentos-recentes" class="space-y-2">
-                    <!-- JS -->
-                </div>
-            </div>
-        </section>
-
-        <!-- ABA 4: CONFIGURAÇÕES -->
-        <section id="sec-config" class="hidden-section max-w-3xl mx-auto">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Configurações da Clínica</h2>
-            
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <div class="mb-4">
-                    <label class="block text-sm font-bold text-gray-600 mb-1">Nome da Clínica (Exibição)</label>
-                    <input type="text" id="cfg-nome" class="input-std" value="Minha Clínica SaaS">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-bold text-gray-600 mb-1">Nome do Profissional Padrão</label>
-                    <input type="text" id="cfg-medico" class="input-std" value="Dr. Administrador">
-                </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-bold text-gray-600 mb-1">Horário de Abertura</label>
-                    <input type="time" class="input-std w-32" value="08:00">
-                </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                <button onclick="Swal.fire('Salvo', 'Configurações salvas localmente.', 'success')" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">Salvar Preferências</button>
+                <!-- FORMULÁRIO DE CADASTRO (ESQUERDA) -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit sticky top-4">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-purple-700">
+                        <i class="fa-solid fa-plus-circle"></i> Novo Procedimento
+                    </h3>
+                    <form onsubmit="event.preventDefault(); app.procedures.add();">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Procedimento</label>
+                                <input type="text" id="proc-name" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none" placeholder="Ex: Clareamento, Consulta..." required>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Preço (R$)</label>
+                                    <input type="number" step="0.01" id="proc-price" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none" placeholder="0,00" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Duração (min)</label>
+                                    <input type="number" id="proc-time" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-purple-500 outline-none" placeholder="30" required>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria (Opcional)</label>
+                                <select id="proc-cat" class="w-full border border-gray-300 rounded-lg p-2.5 bg-white">
+                                    <option value="Geral">Geral</option>
+                                    <option value="Estética">Estética</option>
+                                    <option value="Cirurgia">Cirurgia</option>
+                                    <option value="Exame">Exame</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition shadow-md flex justify-center items-center gap-2 mt-2">
+                                Salvar Item <i class="fa-solid fa-check"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- GRID DE LISTAGEM (DIREITA) -->
+                <div class="lg:col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-gray-700">Itens Disponíveis</h3>
+                        <button onclick="app.procedures.load()" class="text-sm text-purple-600 hover:underline"><i class="fa-solid fa-rotate"></i> Atualizar lista</button>
+                    </div>
+
+                    <div id="procedures-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- ITENS SERÃO INJETADOS AQUI PELO JS -->
+                        <div class="text-center py-10 text-gray-400 col-span-2">
+                            <i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Carregando procedimentos...
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ABA: PACIENTES (RESUMIDA) -->
+        <section id="view-pacientes" class="section-view max-w-5xl mx-auto">
+            <h2 class="text-2xl font-bold mb-4">Pacientes</h2>
+            <div class="bg-white p-8 rounded-xl text-center border border-dashed border-gray-300">
+                <p class="text-gray-500">Use a aba de Agendamento ou Procedimentos para testar o fluxo.</p>
+                <button onclick="router('procedimentos')" class="mt-4 text-purple-600 underline">Voltar para Procedimentos</button>
+            </div>
+        </section>
+
+        <!-- ABA: AGENDAMENTO (CONECTADA) -->
+        <section id="view-agendamento" class="section-view max-w-5xl mx-auto">
+            <h2 class="text-2xl font-bold mb-4">Agendamento</h2>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <label class="block font-bold mb-2">Selecione o Procedimento (Puxado da outra aba)</label>
+                <select id="select-integration-test" class="w-full border p-3 rounded-lg">
+                    <option>Carregando lista...</option>
+                </select>
+                <p class="text-sm text-gray-500 mt-2">Nota: Os itens cadastrados na aba "Procedimentos" aparecem aqui automaticamente.</p>
             </div>
         </section>
 
     </main>
 
-    <!-- LÓGICA JAVASCRIPT -->
+    <!-- JAVASCRIPT LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-        // =====================================================
-        // 🚨 CONFIGURE AQUI SUAS CHAVES DO FIREBASE
-        // =====================================================
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 
+        // 🚨 CONFIGURE AQUI
 const firebaseConfig = {
   apiKey: "AIzaSyC5lYxqNHxCOBPH-ZFK9Br4PHnOCFzUyXs",
   authDomain: "prontuario-ee1fd.firebaseapp.com",
@@ -274,229 +164,161 @@ const firebaseConfig = {
   measurementId: "G-4614MWTTME"
 };
 
-        // Inicialização
-        const firebaseApp = initializeApp(firebaseConfig);
-        const auth = getAuth(firebaseApp);
-        const db = getFirestore(firebaseApp);
+        // Init Firebase (Tratamento de erro se config estiver vazia)
+        let db;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+        } catch(e) {
+            console.error("Firebase não configurado.");
+        }
 
-        // --- ROTEAMENTO SIMPLES ---
-        window.router = (sectionId) => {
-            document.querySelectorAll('section').forEach(el => el.classList.add('hidden-section'));
-            document.querySelectorAll('section').forEach(el => el.classList.remove('active-section'));
+        // --- ROUTER ---
+        window.router = (viewName) => {
+            document.querySelectorAll('.section-view').forEach(el => el.classList.remove('section-active'));
+            document.getElementById(`view-${viewName}`).classList.add('section-active');
             
-            document.getElementById(`sec-${sectionId}`).classList.remove('hidden-section');
-            document.getElementById(`sec-${sectionId}`).classList.add('active-section');
+            // Update Menu Styles
+            document.querySelectorAll('nav button').forEach(b => {
+                b.classList.remove('bg-purple-50', 'text-purple-700', 'font-bold', 'border-purple-100', 'shadow-sm');
+                b.classList.add('text-gray-600', 'hover:bg-gray-50');
+            });
+            const btn = document.getElementById(`nav-${viewName}`);
+            btn.classList.remove('text-gray-600', 'hover:bg-gray-50');
+            btn.classList.add('bg-purple-50', 'text-purple-700', 'font-bold', 'border', 'border-purple-100', 'shadow-sm');
 
-            // Highlight Menu
-            document.querySelectorAll('aside button').forEach(b => b.classList.remove('bg-blue-50', 'text-blue-600'));
-            const nav = document.getElementById(`nav-${sectionId}`);
-            if(nav) nav.classList.add('bg-blue-50', 'text-blue-600');
-
-            // Load Data on Enter
-            if(sectionId === 'pacientes') app.pacientes.load();
-            if(sectionId === 'procedimentos') app.procedimentos.load();
-            if(sectionId === 'agendamento') app.agenda.init();
+            if(viewName === 'procedimentos') app.procedures.load();
+            if(viewName === 'agendamento') app.integration.loadDropdown();
         };
 
         // --- APP LOGIC ---
         window.app = {
-            auth: {
-                login: async () => {
-                    const email = document.getElementById('login-email').value;
-                    const pass = document.getElementById('login-pass').value;
-                    try {
-                        await signInWithEmailAndPassword(auth, email, pass);
-                    } catch(e) {
-                        const msg = document.getElementById('login-msg');
-                        msg.innerText = "Erro: " + e.message;
-                        msg.classList.remove('hidden');
-                    }
-                },
-                logout: () => signOut(auth)
-            },
+            procedures: {
+                // 1. ADICIONAR
+                add: async () => {
+                    if(!db) return Swal.fire('Erro', 'Configure o Firebase no código HTML.', 'error');
 
-            // 1. MÓDULO PACIENTES
-            pacientes: {
-                save: async () => {
-                    const nome = document.getElementById('p-nome').value;
-                    const cpf = document.getElementById('p-cpf').value;
-                    const tel = document.getElementById('p-tel').value;
-                    const email = document.getElementById('p-email').value;
-                    const conv = document.getElementById('p-conv').value;
-
-                    try {
-                        await addDoc(collection(db, "patients"), {
-                            name: nome, cpf, phone: tel, email, insurance: conv,
-                            createdAt: serverTimestamp()
-                        });
-                        Swal.fire('Sucesso', 'Paciente cadastrado e disponível no grid.', 'success');
-                        document.querySelector('form').reset(); // Limpa form
-                        app.pacientes.load(); // Recarrega grid
-                    } catch(e) { Swal.fire('Erro', e.message, 'error'); }
-                },
-                load: async () => {
-                    const tbody = document.getElementById('grid-pacientes');
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Carregando...</td></tr>';
-                    
-                    const q = query(collection(db, "patients"), orderBy("createdAt", "desc"), limit(20));
-                    const snap = await getDocs(q);
-                    
-                    tbody.innerHTML = '';
-                    if(snap.empty) {
-                        tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-400">Nenhum paciente cadastrado.</td></tr>';
-                        return;
-                    }
-
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        tbody.innerHTML += `
-                            <tr class="hover:bg-gray-50 border-b border-gray-50">
-                                <td class="p-4 font-medium">${d.name}</td>
-                                <td class="p-4 text-xs text-gray-500">${d.phone}<br>${d.email || ''}</td>
-                                <td class="p-4"><span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">${d.insurance || '-'}</span></td>
-                                <td class="p-4 text-right">
-                                    <button class="text-gray-400 hover:text-blue-600"><i class="fa-solid fa-pen-to-square"></i></button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                }
-            },
-
-            // 2. MÓDULO PROCEDIMENTOS
-            procedimentos: {
-                listCache: [],
-                save: async () => {
-                    const nome = document.getElementById('proc-nome').value;
-                    const preco = document.getElementById('proc-preco').value;
-                    const tempo = document.getElementById('proc-tempo').value;
+                    const name = document.getElementById('proc-name').value;
+                    const price = parseFloat(document.getElementById('proc-price').value);
+                    const time = parseInt(document.getElementById('proc-time').value);
+                    const cat = document.getElementById('proc-cat').value;
 
                     try {
                         await addDoc(collection(db, "procedures"), {
-                            name: nome, price: preco, duration: tempo
+                            name, price, duration: time, category: cat,
+                            createdAt: new Date()
                         });
-                        Swal.fire('Adicionado', 'Procedimento salvo no catálogo.', 'success');
-                        document.getElementById('proc-nome').value = '';
-                        app.procedimentos.load();
-                    } catch(e) { Swal.fire('Erro', e.message, 'error'); }
-                },
-                load: async () => {
-                    const grid = document.getElementById('grid-procedimentos');
-                    grid.innerHTML = 'Carregando catálogo...';
-                    
-                    const snap = await getDocs(collection(db, "procedures"));
-                    app.procedimentos.listCache = []; // Cache para usar no Agendamento
-                    
-                    grid.innerHTML = '';
-                    snap.forEach(doc => {
-                        const d = { id: doc.id, ...doc.data() };
-                        app.procedimentos.listCache.push(d);
                         
-                        grid.innerHTML += `
-                            <div class="bg-white p-4 rounded-lg border border-gray-200 flex justify-between items-center">
-                                <div>
-                                    <div class="font-bold text-gray-700">${d.name}</div>
-                                    <div class="text-xs text-gray-500">${d.duration} min</div>
-                                </div>
-                                <div class="font-bold text-green-600">R$ ${d.price}</div>
-                            </div>
-                        `;
-                    });
-                }
-            },
-
-            // 3. MÓDULO AGENDAMENTO
-            agenda: {
-                init: async () => {
-                    // Carrega Pacientes no Select
-                    const selPac = document.getElementById('ag-paciente-id');
-                    selPac.innerHTML = '<option>Carregando...</option>';
-                    const snapPac = await getDocs(query(collection(db, "patients"), orderBy("name")));
-                    selPac.innerHTML = '<option value="">Selecione o Paciente...</option>';
-                    snapPac.forEach(doc => {
-                        selPac.innerHTML += `<option value="${doc.id}">${doc.data().name}</option>`;
-                    });
-
-                    // Carrega Procedimentos no Select
-                    const selProc = document.getElementById('ag-proc-id');
-                    // Garante que temos cache, se nao busca
-                    if(app.procedimentos.listCache.length === 0) await app.procedimentos.load();
-                    
-                    selProc.innerHTML = '<option value="">Selecione o Procedimento...</option>';
-                    app.procedimentos.listCache.forEach(proc => {
-                        // Guarda dados no value para facilitar preenchimento
-                        selProc.innerHTML += `<option value="${proc.id}" data-price="${proc.price}" data-time="${proc.duration}">${proc.name}</option>`;
-                    });
-                    
-                    // Seta data de hoje
-                    document.getElementById('ag-data').valueAsDate = new Date();
-                    
-                    app.agenda.loadRecent();
-                },
-                fillDetails: () => {
-                    const sel = document.getElementById('ag-proc-id');
-                    const opt = sel.options[sel.selectedIndex];
-                    if(opt.value) {
-                        document.getElementById('ag-valor').value = opt.dataset.price;
-                        document.getElementById('ag-tempo').value = opt.dataset.time;
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Cadastrado!',
+                            text: `${name} adicionado à tabela.`,
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                        
+                        document.querySelector('form').reset();
+                        app.procedures.load(); // Recarrega lista
+                    } catch (e) {
+                        Swal.fire('Erro', e.message, 'error');
                     }
                 },
-                save: async () => {
-                    const patId = document.getElementById('ag-paciente-id').value;
-                    const patName = document.getElementById('ag-paciente-id').options[document.getElementById('ag-paciente-id').selectedIndex].text;
-                    
-                    const procId = document.getElementById('ag-proc-id').value;
-                    const procName = document.getElementById('ag-proc-id').options[document.getElementById('ag-proc-id').selectedIndex].text;
-                    
-                    const val = document.getElementById('ag-valor').value;
-                    const data = document.getElementById('ag-data').value;
-                    const hora = document.getElementById('ag-hora').value;
 
-                    if(!patId || !procId || !data || !hora) {
-                        Swal.fire('Atenção', 'Preencha todos os campos', 'warning');
+                // 2. LISTAR
+                load: async () => {
+                    if(!db) return;
+                    const list = document.getElementById('procedures-list');
+                    // Query ordenada por nome seria ideal, mas exige índice. Usando padrão.
+                    const q = query(collection(db, "procedures")); 
+                    const snap = await getDocs(q);
+
+                    list.innerHTML = '';
+
+                    if(snap.empty) {
+                        list.innerHTML = `
+                            <div class="col-span-2 text-center p-8 border-2 border-dashed border-gray-300 rounded-xl">
+                                <p class="text-gray-400">Nenhum procedimento cadastrado ainda.</p>
+                            </div>`;
                         return;
                     }
 
-                    try {
-                        await addDoc(collection(db, "appointments"), {
-                            patientId: patId, patientName: patName,
-                            procedureId: procId, procedureName: procName,
-                            value: val, date: data, time: hora,
-                            status: 'scheduled', createdAt: serverTimestamp()
-                        });
-                        Swal.fire('Agendado!', `Paciente: ${patName}<br>Dia: ${data} às ${hora}`, 'success');
-                        app.agenda.loadRecent();
-                    } catch(e) { Swal.fire('Erro', e.message, 'error'); }
-                },
-                loadRecent: async () => {
-                    const list = document.getElementById('lista-agendamentos-recentes');
-                    const q = query(collection(db, "appointments"), orderBy("createdAt", "desc"), limit(5));
-                    const snap = await getDocs(q);
-                    
-                    list.innerHTML = '';
                     snap.forEach(doc => {
-                        const d = doc.data();
+                        const p = doc.data();
+                        // Formatação de Moeda BRL
+                        const priceFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price);
+                        
+                        // Cor da categoria
+                        let catColor = 'bg-gray-100 text-gray-600';
+                        if(p.category === 'Estética') catColor = 'bg-pink-100 text-pink-600';
+                        if(p.category === 'Cirurgia') catColor = 'bg-blue-100 text-blue-600';
+
                         list.innerHTML += `
-                            <div class="bg-white p-3 rounded border border-gray-100 flex justify-between items-center text-sm">
-                                <div><span class="font-bold">${d.patientName}</span> - ${d.procedureName}</div>
-                                <div class="text-blue-600 font-bold">${d.date.split('-').reverse().join('/')} ${d.time}</div>
+                            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 card-proc relative group">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="text-xs font-bold uppercase px-2 py-1 rounded-full ${catColor} mb-2 inline-block">${p.category || 'Geral'}</span>
+                                        <h4 class="font-bold text-lg text-gray-800">${p.name}</h4>
+                                        <div class="flex items-center gap-2 text-gray-500 text-sm mt-1">
+                                            <i class="fa-regular fa-clock"></i> ${p.duration} min
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-bold text-xl text-purple-700">${priceFmt}</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Botão de Excluir (Só aparece no Hover) -->
+                                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
+                                    <button onclick="app.procedures.remove('${doc.id}')" class="text-red-400 hover:text-red-600 p-2" title="Excluir">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
                             </div>
                         `;
+                    });
+                },
+
+                // 3. REMOVER
+                remove: async (id) => {
+                    const res = await Swal.fire({
+                        title: 'Tem certeza?',
+                        text: "Isso removerá o procedimento da lista de escolhas.",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'Sim, excluir'
+                    });
+
+                    if(res.isConfirmed) {
+                        await deleteDoc(doc(db, "procedures", id));
+                        app.procedures.load();
+                        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                        Toast.fire({ icon: 'success', title: 'Procedimento removido' });
+                    }
+                }
+            },
+
+            integration: {
+                loadDropdown: async () => {
+                    // Mostra como os dados da aba "Procedimentos" populam o select da aba "Agendamento"
+                    if(!db) return;
+                    const sel = document.getElementById('select-integration-test');
+                    sel.innerHTML = '<option>Carregando...</option>';
+                    
+                    const snap = await getDocs(collection(db, "procedures"));
+                    sel.innerHTML = '<option value="">Selecione um procedimento...</option>';
+                    
+                    snap.forEach(doc => {
+                        const p = doc.data();
+                        const price = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price);
+                        sel.innerHTML += `<option value="${doc.id}">${p.name} - ${price} (${p.duration}min)</option>`;
                     });
                 }
             }
         };
 
-        // Auth Listener
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('view-auth').classList.add('hidden');
-                // Inicia na aba Pacientes
-                router('pacientes');
-            } else {
-                document.getElementById('view-auth').classList.remove('hidden');
-            }
-        });
+        // Start
+        window.onload = () => app.procedures.load();
 
     </script>
 </body>
