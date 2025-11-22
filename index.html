@@ -1,601 +1,833 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SaaS Clinic - MVP (Single File)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaaS Clinic Manager - Firebase Edition</title>
 
-  <!-- Tailwind (CDN) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 (Modais e Alertas bonitos) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <style>
-    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-    .fade-in { animation: fadeIn .25s ease both; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: translateY(0) } }
-    .small { font-size: 0.85rem; }
-    ::-webkit-scrollbar { height: 10px; width: 8px; }
-    ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.6); border-radius: 6px; }
-  </style>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Loader */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .hidden-section { display: none; }
+        .active-section { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Tabs Prontuário */
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen">
+<body class="bg-slate-50 text-slate-800 h-screen overflow-hidden">
 
-  <div class="flex h-screen">
-    <!-- SIDEBAR -->
-    <aside class="w-72 bg-slate-900 text-white p-4 hidden md:flex flex-col">
-      <div class="flex items-center gap-3 mb-6">
-        <!-- Imagem enviada pelo usuário (caminho local fornecido) -->
-        <img src="sandbox:/mnt/data/59feb59c-b7ed-42aa-b427-0c2cb8a87b31.png" alt="Logo" class="w-10 h-10 object-cover rounded" onerror="this.style.display='none'"/>
-        <div>
-          <h1 class="text-xl font-bold">SaaS Clinic</h1>
-          <div class="text-xs text-slate-400">MVP • Agendamento & Pacientes</div>
+    <!-- ========================================= -->
+    <!-- TELA DE LOGIN -->
+    <!-- ========================================= -->
+    <div id="view-auth" class="h-full w-full flex items-center justify-center bg-slate-900 z-50 absolute top-0 left-0">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 mb-3">
+                    <i class="fa-solid fa-hospital text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">Clinic SaaS</h1>
+                <p class="text-slate-500 text-sm">Acesse sua conta para continuar</p>
+            </div>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
+                    <input type="email" id="email" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+                    <input type="password" id="password" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" required>
+                </div>
+                <button type="submit" id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition shadow-lg flex justify-center items-center gap-2">
+                    Entrar <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+            <p class="mt-4 text-center text-xs text-slate-400">
+                Não tem conta? Entre em contato com o admin.<br>
+                <span id="msg-login-error" class="text-red-500 font-bold hidden">Erro ao fazer login.</span>
+            </p>
         </div>
-      </div>
-
-      <nav class="flex-1 space-y-1">
-        <button onclick="router('dashboard')" id="nav-dashboard" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800 flex items-center gap-3 bg-slate-800 text-blue-400"><i class="fa-solid fa-chart-line"></i> Painel</button>
-        <button onclick="router('agenda')" id="nav-agenda" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800 flex items-center gap-3 text-slate-300"><i class="fa-regular fa-calendar-days"></i> Agenda</button>
-        <button onclick="router('pacientes')" id="nav-pacientes" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800 flex items-center gap-3 text-slate-300"><i class="fa-solid fa-users"></i> Pacientes</button>
-        <button onclick="router('relatorios')" id="nav-relatorios" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800 flex items-center gap-3 text-slate-300"><i class="fa-solid fa-file-lines"></i> Relatórios / Export</button>
-      </nav>
-
-      <div class="mt-6 text-xs text-slate-400">
-        <div class="border-t border-slate-700 pt-4">
-          Versão MVP • LocalStorage
-        </div>
-      </div>
-    </aside>
-
-    <!-- MAIN -->
-    <main class="flex-1 overflow-auto">
-      <!-- Mobile header -->
-      <header class="md:hidden bg-slate-900 text-white p-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold">S</div>
-          <div>
-            <div class="font-bold">SaaS Clinic</div>
-            <div class="text-xs text-slate-200">MVP</div>
-          </div>
-        </div>
-        <div>
-          <button onclick="document.querySelector('aside').classList.toggle('hidden')" class="px-3 py-1"><i class="fa-solid fa-bars"></i></button>
-        </div>
-      </header>
-
-      <div class="p-6">
-        <!-- DASHBOARD -->
-        <section id="dashboard" class="fade-in">
-          <div class="flex items-center justify-between mb-6">
-            <div>
-              <h2 class="text-2xl font-bold">Painel • SaaS Clinic (MVP)</h2>
-              <p class="text-slate-500 small">Visão geral rápida dos atendimentos e pacientes.</p>
-            </div>
-            <div class="flex gap-2">
-              <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="openModal('modal-agendamento')"><i class="fa-solid fa-plus mr-2"></i>Novo Agendamento</button>
-              <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onclick="openModal('modal-paciente')"><i class="fa-solid fa-user-plus mr-2"></i>Novo Paciente</button>
-            </div>
-          </div>
-
-          <!-- KPI row -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white p-4 rounded shadow">
-              <div class="text-slate-400 text-xs">Agendamentos Hoje</div>
-              <div class="text-2xl font-bold" id="k-agendamentos">0</div>
-            </div>
-            <div class="bg-white p-4 rounded shadow">
-              <div class="text-slate-400 text-xs">Pacientes Registrados</div>
-              <div class="text-2xl font-bold" id="k-pacientes">0</div>
-            </div>
-            <div class="bg-white p-4 rounded shadow">
-              <div class="text-slate-400 text-xs">Faturamento Estimado</div>
-              <div class="text-2xl font-bold" id="k-faturamento">R$ 0</div>
-            </div>
-            <div class="bg-white p-4 rounded shadow">
-              <div class="text-slate-400 text-xs">Taxa de Confirmação</div>
-              <div class="text-2xl font-bold text-blue-600" id="k-confirmacao">-</div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="bg-white p-4 rounded shadow lg:col-span-2">
-              <h3 class="font-semibold mb-3">Atendimentos da Semana</h3>
-              <canvas id="chartAtendimentos" height="120"></canvas>
-            </div>
-
-            <div class="bg-white p-4 rounded shadow">
-              <h3 class="font-semibold mb-3">Próximos Agendamentos</h3>
-              <div id="lista-proximos" class="space-y-3"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- AGENDA -->
-        <section id="agenda" class="hidden fade-in">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold">Agenda Inteligente</h2>
-            <div class="flex gap-2">
-              <input type="date" id="filter-date" class="border rounded px-3 py-2 small" onchange="renderAgenda()" />
-              <button class="bg-blue-600 text-white px-3 py-2 rounded" onclick="openModal('modal-agendamento')">Novo</button>
-            </div>
-          </div>
-
-          <div class="bg-white rounded shadow overflow-auto">
-            <table class="w-full text-left">
-              <thead class="bg-slate-50 text-slate-500 text-sm">
-                <tr><th class="p-3">Horário</th><th class="p-3">Paciente</th><th class="p-3">Procedimento</th><th class="p-3">Valor</th><th class="p-3">Status</th><th class="p-3 text-right">Ações</th></tr>
-              </thead>
-              <tbody id="agenda-list" class="divide-y"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- PACIENTES -->
-        <section id="pacientes" class="hidden fade-in">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold">Pacientes</h2>
-            <div class="flex gap-2">
-              <input id="search-paciente" placeholder="Buscar por nome ou telefone..." class="border rounded px-3 py-2 small" oninput="renderPacientes()" />
-              <button class="bg-green-600 text-white px-3 py-2 rounded" onclick="openModal('modal-paciente')">Novo</button>
-            </div>
-          </div>
-
-          <div class="bg-white rounded shadow overflow-auto">
-            <table class="w-full text-left">
-              <thead class="bg-slate-50 text-slate-500 text-sm">
-                <tr><th class="p-3">Nome</th><th class="p-3">Telefone</th><th class="p-3">Última Visita</th><th class="p-3 text-right">Ações</th></tr>
-              </thead>
-              <tbody id="pacientes-list" class="divide-y"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- RELATÓRIOS / EXPORT -->
-        <section id="relatorios" class="hidden fade-in">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold">Exportar / Importar</h2>
-            <div class="flex gap-2">
-              <input id="file-csv" type="file" accept=".csv" class="hidden" onchange="importCSV(event)" />
-              <button class="bg-slate-700 text-white px-3 py-2 rounded" onclick="document.getElementById('file-csv').click()">Importar CSV</button>
-              <button class="bg-blue-600 text-white px-3 py-2 rounded" onclick="exportCSV()">Exportar CSV</button>
-              <button class="bg-neutral-600 text-white px-3 py-2 rounded" onclick="downloadBackup()">Backup (.json)</button>
-            </div>
-          </div>
-
-          <div class="bg-white p-4 rounded shadow">
-            <p class="small text-slate-600">Exporta os dados atuais para CSV (pacientes + agendamentos) ou baixa backup completo em JSON.</p>
-          </div>
-        </section>
-      </div>
-    </main>
-  </div>
-
-  <!-- MODAIS -->
-  <div id="modal-paciente" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-md p-6 m-4">
-      <h3 class="font-bold text-lg mb-3">Cadastrar / Editar Paciente</h3>
-      <form id="form-paciente" onsubmit="event.preventDefault(); savePaciente();">
-        <input type="hidden" id="p-id" />
-        <div class="space-y-3">
-          <div><label class="block text-sm">Nome</label><input id="p-nome" required class="w-full border rounded px-3 py-2" /></div>
-          <div><label class="block text-sm">Telefone (formato internacional ex: 5511999999999)</label><input id="p-tel" required class="w-full border rounded px-3 py-2" /></div>
-          <div><label class="block text-sm">Email</label><input id="p-email" class="w-full border rounded px-3 py-2" /></div>
-          <div><label class="block text-sm">Observações</label><textarea id="p-notes" class="w-full border rounded px-3 py-2 small"></textarea></div>
-        </div>
-        <div class="mt-4 flex justify-end gap-2">
-          <button type="button" class="px-4 py-2 rounded" onclick="closeModal('modal-paciente')">Cancelar</button>
-          <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Salvar</button>
-        </div>
-      </form>
     </div>
-  </div>
 
-  <div id="modal-agendamento" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-full max-w-md p-6 m-4">
-      <h3 class="font-bold text-lg mb-3">Novo Agendamento</h3>
-      <form id="form-agendamento" onsubmit="event.preventDefault(); saveAgendamento();">
-        <input type="hidden" id="a-id" />
-        <div class="space-y-3">
-          <div>
-            <label class="block text-sm">Paciente</label>
-            <select id="a-paciente" class="w-full border rounded px-3 py-2"></select>
-          </div>
-          <div class="flex gap-2">
-            <div><label class="block text-sm">Data</label><input id="a-data" type="date" required class="border rounded px-3 py-2" /></div>
-            <div><label class="block text-sm">Hora</label><input id="a-hora" type="time" required class="border rounded px-3 py-2" /></div>
-          </div>
-          <div><label class="block text-sm">Procedimento</label><input id="a-procedimento" required class="w-full border rounded px-3 py-2" /></div>
-          <div><label class="block text-sm">Valor (R$)</label><input id="a-valor" type="number" step="0.01" class="w-full border rounded px-3 py-2" /></div>
-          <div><label class="block text-sm">Observações</label><input id="a-notes" class="w-full border rounded px-3 py-2" /></div>
-        </div>
-        <div class="mt-4 flex justify-end gap-2">
-          <button type="button" class="px-4 py-2 rounded" onclick="closeModal('modal-agendamento')">Cancelar</button>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Agendar</button>
-        </div>
-      </form>
+    <!-- ========================================= -->
+    <!-- APLICAÇÃO PRINCIPAL -->
+    <!-- ========================================= -->
+    <div id="view-app" class="h-full flex hidden-section">
+        
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col hidden md:flex">
+            <div class="p-6 border-b border-slate-100 flex items-center gap-3">
+                <i class="fa-solid fa-heart-pulse text-blue-600 text-2xl"></i>
+                <span class="font-bold text-xl tracking-tight">Clinic SaaS</span>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <button onclick="router.navigate('dashboard')" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-slate-600 font-medium flex items-center gap-3 transition" id="nav-dashboard">
+                    <i class="fa-solid fa-chart-pie w-5"></i> Dashboard
+                </button>
+                <button onclick="router.navigate('agenda')" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-slate-600 font-medium flex items-center gap-3 transition" id="nav-agenda">
+                    <i class="fa-regular fa-calendar-days w-5"></i> Agenda
+                </button>
+                <button onclick="router.navigate('pacientes')" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-slate-600 font-medium flex items-center gap-3 transition" id="nav-pacientes">
+                    <i class="fa-solid fa-users w-5"></i> Pacientes
+                </button>
+                <button onclick="router.navigate('checkin')" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-slate-600 font-medium flex items-center gap-3 transition" id="nav-checkin">
+                    <i class="fa-solid fa-qrcode w-5"></i> Check-in / Recepção
+                </button>
+                <button onclick="router.navigate('prontuario')" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-slate-600 font-medium flex items-center gap-3 transition" id="nav-prontuario">
+                    <i class="fa-solid fa-file-medical w-5"></i> Prontuário
+                </button>
+                <div class="border-t border-slate-100 my-2"></div>
+                <button onclick="router.navigate('admin')" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-slate-600 font-medium flex items-center gap-3 transition" id="nav-admin">
+                    <i class="fa-solid fa-gear w-5"></i> Admin
+                </button>
+            </nav>
+
+            <div class="p-4 border-t border-slate-100">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold" id="user-avatar">U</div>
+                        <div class="text-xs truncate max-w-[100px]">
+                            <div class="font-bold text-slate-700" id="user-email">user@email.com</div>
+                        </div>
+                    </div>
+                    <button id="btn-logout" class="text-slate-400 hover:text-red-500 transition" title="Sair"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col h-full relative">
+            <!-- Mobile Header -->
+            <header class="bg-white border-b border-slate-200 p-4 flex justify-between items-center md:hidden">
+                <span class="font-bold">Clinic SaaS</span>
+                <button id="mobile-menu-btn" class="text-slate-600"><i class="fa-solid fa-bars"></i></button>
+            </header>
+
+            <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-8 relative bg-slate-50">
+                
+                <!-- 1. DASHBOARD SECTION -->
+                <div id="section-dashboard" class="section hidden-section">
+                    <h2 class="text-2xl font-bold mb-6">Painel de Controle</h2>
+                    
+                    <!-- Metrics -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">Consultas Hoje</div>
+                            <div class="text-3xl font-bold text-blue-600" id="dash-count-today">...</div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">Pacientes</div>
+                            <div class="text-3xl font-bold text-slate-700" id="dash-count-patients">...</div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">Fila de Espera</div>
+                            <div class="text-3xl font-bold text-orange-500" id="dash-count-waiting">...</div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">Faturamento (Est.)</div>
+                            <div class="text-3xl font-bold text-green-600">R$ <span id="dash-revenue">0</span></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <h3 class="font-bold mb-4">Atendimentos Recentes</h3>
+                            <ul id="dash-list-recent" class="space-y-3 text-sm">
+                                <li class="text-slate-400 italic">Carregando...</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <h3 class="font-bold mb-4">Ações Rápidas</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button onclick="router.navigate('agenda')" class="p-4 bg-blue-50 text-blue-600 rounded-lg font-bold hover:bg-blue-100 transition">Novo Agendamento</button>
+                                <button onclick="router.navigate('pacientes')" class="p-4 bg-green-50 text-green-600 rounded-lg font-bold hover:bg-green-100 transition">Cadastrar Paciente</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. AGENDA SECTION -->
+                <div id="section-agenda" class="section hidden-section">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h2 class="text-2xl font-bold">Agenda Inteligente</h2>
+                        <div class="flex gap-2">
+                            <input type="date" id="agenda-date-filter" class="border rounded-lg px-3 py-2 text-sm">
+                            <button onclick="app.agenda.openNewModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow">
+                                <i class="fa-solid fa-plus"></i> Agendar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-500 font-medium">
+                                    <tr>
+                                        <th class="p-4">Horário</th>
+                                        <th class="p-4">Paciente</th>
+                                        <th class="p-4">Profissional</th>
+                                        <th class="p-4">Status</th>
+                                        <th class="p-4 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="agenda-list" class="divide-y divide-slate-100">
+                                    <!-- Render via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. PACIENTES SECTION -->
+                <div id="section-pacientes" class="section hidden-section">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">Pacientes</h2>
+                        <div class="flex gap-2">
+                            <button onclick="app.patients.exportCSV()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold">
+                                <i class="fa-solid fa-file-csv"></i> CSV
+                            </button>
+                            <button onclick="app.patients.openNewModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow">
+                                <i class="fa-solid fa-user-plus"></i> Novo
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 mb-4">
+                        <div class="p-4 border-b border-slate-100">
+                            <input type="text" id="patient-search" placeholder="Buscar por nome ou CPF..." class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="overflow-x-auto max-h-[60vh]">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-500 sticky top-0">
+                                    <tr>
+                                        <th class="p-4">Nome</th>
+                                        <th class="p-4">Contato</th>
+                                        <th class="p-4">Convênio</th>
+                                        <th class="p-4 text-right">Prontuário</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="patients-list" class="divide-y divide-slate-100">
+                                    <!-- Render JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. CHECK-IN / RECEPÇÃO SECTION -->
+                <div id="section-checkin" class="section hidden-section">
+                    <h2 class="text-2xl font-bold mb-6">Recepção & Check-in</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- QR Code Area -->
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 text-center">
+                            <h3 class="font-bold mb-4">Check-in Rápido</h3>
+                            <div class="bg-slate-100 w-48 h-48 mx-auto rounded-lg flex items-center justify-center mb-4">
+                                <i class="fa-solid fa-qrcode text-6xl text-slate-300"></i>
+                            </div>
+                            <p class="text-sm text-slate-500 mb-4">Aponte a câmera ou digite o CPF</p>
+                            <button onclick="app.checkin.manual()" class="bg-blue-600 text-white w-full py-2 rounded-lg font-bold">Check-in Manual</button>
+                        </div>
+
+                        <!-- Fila de Espera -->
+                        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100">
+                            <div class="p-4 border-b border-slate-100 font-bold bg-slate-50">Fila de Espera (Hoje)</div>
+                            <ul id="checkin-list" class="divide-y divide-slate-100">
+                                <!-- Render JS -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. PRONTUÁRIO SECTION -->
+                <div id="section-prontuario" class="section hidden-section">
+                    <h2 class="text-2xl font-bold mb-6">Prontuário Eletrônico</h2>
+                    
+                    <div id="prontuario-selector" class="bg-white p-8 rounded-xl text-center shadow-sm border border-slate-100">
+                        <i class="fa-solid fa-file-medical text-4xl text-slate-300 mb-4"></i>
+                        <p class="text-slate-500 mb-4">Selecione um paciente na aba "Pacientes" ou "Agenda" para abrir o prontuário.</p>
+                        <button onclick="router.navigate('pacientes')" class="text-blue-600 font-bold hover:underline">Ir para lista de pacientes</button>
+                    </div>
+
+                    <div id="prontuario-detail" class="hidden">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-slate-800" id="pt-name">Nome do Paciente</h3>
+                                <p class="text-sm text-slate-500" id="pt-info">CPF: 000... • Convênio: Unimed</p>
+                            </div>
+                            <button onclick="app.prontuario.close()" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-times"></i> Fechar</button>
+                        </div>
+
+                        <div class="flex gap-4 mb-4 border-b border-slate-200">
+                            <button class="px-4 py-2 font-medium text-sm tab-active" id="tab-btn-timeline">Histórico</button>
+                            <button class="px-4 py-2 font-medium text-sm text-slate-500 hover:text-blue-600" id="tab-btn-files">Arquivos</button>
+                        </div>
+
+                        <!-- Timeline Tab -->
+                        <div id="tab-timeline" class="space-y-4">
+                            <div class="bg-white p-4 rounded-xl border border-slate-200">
+                                <textarea id="new-note-text" class="w-full border rounded-lg p-3 text-sm mb-2" rows="3" placeholder="Nova evolução clínica (SOAP)..."></textarea>
+                                <div class="flex justify-end">
+                                    <button onclick="app.prontuario.addNote()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">Salvar Evolução</button>
+                                </div>
+                            </div>
+                            <div id="timeline-list" class="space-y-4"></div>
+                        </div>
+                        
+                        <!-- Files Tab (Simple placeholder) -->
+                        <div id="tab-files" class="hidden bg-white p-6 rounded-xl border border-slate-200 text-center">
+                            <input type="file" id="file-upload" class="hidden" onchange="app.prontuario.uploadFile(this)">
+                            <button onclick="document.getElementById('file-upload').click()" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold mb-4">
+                                <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Upload de Exame
+                            </button>
+                            <p class="text-xs text-red-400 mt-2">* Requer configuração de CORS no Firebase Storage.</p>
+                            <div id="files-list" class="mt-4 text-left"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. ADMIN SECTION -->
+                <div id="section-admin" class="section hidden-section">
+                    <h2 class="text-2xl font-bold mb-6">Administração</h2>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                        <h3 class="font-bold mb-4">Controle de Usuários</h3>
+                        <p class="text-sm text-slate-500 mb-4">Apenas usuários autenticados e com a role 'admin' podem ver esta tela (simulado).</p>
+                        <button onclick="Swal.fire('Info', 'Feature disponível na versão PRO para criar novos recepcionistas/médicos.', 'info')" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm">
+                            <i class="fa-solid fa-user-plus"></i> Adicionar Usuário
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </main>
     </div>
-  </div>
 
-  <!-- SCRIPTS -->
-  <script>
-    /* -------------------------
-       Storage / Estado inicial
-       ------------------------- */
-    const DB_KEY = 'saas_clinic_mvp_v1';
-    let db = {
-      pacientes: [
-        // exemplo
-        { id: 1, nome: "Maria Silva", telefone: "5511999998888", email:"maria@email.com", notes:"", lastVisit:"2023-10-01" }
-      ],
-      agendamentos: [
-        // exemplo
-      ]
-    };
+    <!-- ========================================= -->
+    <!-- JAVASCRIPT LOGIC (MODULE) -->
+    <!-- ========================================= -->
+    <script type="module">
+        // -----------------------------------------------------------
+        // 1. FIREBASE CONFIGURATION
+        // -----------------------------------------------------------
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
-    function loadDB() {
-      const raw = localStorage.getItem(DB_KEY);
-      if(raw) {
-        try { db = JSON.parse(raw); } catch(e) { console.error('DB parse error', e); }
-      } else saveDB();
-    }
-    function saveDB() {
-      localStorage.setItem(DB_KEY, JSON.stringify(db));
-      updateAll();
-    }
+        // 🚨 SUBSTITUA ESTAS CREDENCIAIS PELAS DO SEU PROJETO!
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY_AQUI",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            projectId: "SEU_PROJETO_ID",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "000000000000",
+            appId: "1:0000000000:web:xxxxxxxxx"
+        };
 
-    /* -------------------------
-       Router / Views
-       ------------------------- */
-    function router(view) {
-      document.querySelectorAll('section[id]').forEach(s => s.classList.add('hidden'));
-      document.getElementById(view).classList.remove('hidden');
+        // Initialize Firebase
+        let appFirebase, auth, db, storage;
+        try {
+            appFirebase = initializeApp(firebaseConfig);
+            auth = getAuth(appFirebase);
+            db = getFirestore(appFirebase);
+            storage = getStorage(appFirebase);
+        } catch (e) {
+            console.error("Firebase init failed. Did you fill the config?", e);
+            Swal.fire("Erro de Configuração", "Você precisa editar o arquivo HTML e colocar suas credenciais do Firebase nas linhas de script.", "error");
+        }
 
-      // nav active
-      document.querySelectorAll('aside button, header button').forEach(b => b.classList.remove('bg-slate-800','text-blue-400'));
-      const map = { dashboard: 'nav-dashboard', agenda: 'nav-agenda', pacientes: 'nav-pacientes', relatorios: 'nav-relatorios' };
-      if(map[view]) {
-        const el = document.getElementById(map[view]);
-        if(el) el.classList.add('bg-slate-800','text-blue-400');
-      }
+        // -----------------------------------------------------------
+        // 2. ROUTING & UI STATE
+        // -----------------------------------------------------------
+        const router = {
+            navigate: (viewId) => {
+                // Highlight sidebar
+                document.querySelectorAll('.nav-btn').forEach(el => {
+                    el.classList.remove('bg-blue-50', 'text-blue-600');
+                    el.classList.add('text-slate-600');
+                });
+                const navBtn = document.getElementById(`nav-${viewId}`);
+                if(navBtn) {
+                    navBtn.classList.add('bg-blue-50', 'text-blue-600');
+                    navBtn.classList.remove('text-slate-600');
+                }
 
-      if(view === 'dashboard') updateDashboard();
-      if(view === 'agenda') { document.getElementById('filter-date').value = document.getElementById('filter-date').value || todayISO(); renderAgenda(); }
-      if(view === 'pacientes') renderPacientes();
-      if(view === 'relatorios') {}
-    }
+                // Show section
+                document.querySelectorAll('.section').forEach(el => el.classList.remove('active-section', 'block'));
+                document.querySelectorAll('.section').forEach(el => el.classList.add('hidden-section'));
+                
+                const section = document.getElementById(`section-${viewId}`);
+                if(section) {
+                    section.classList.remove('hidden-section');
+                    section.classList.add('active-section');
+                    // Trigger loads
+                    if(viewId === 'dashboard') app.dashboard.load();
+                    if(viewId === 'agenda') app.agenda.load();
+                    if(viewId === 'pacientes') app.patients.load();
+                    if(viewId === 'checkin') app.checkin.load();
+                }
+            }
+        };
 
-    /* -------------------------
-       Utilitários
-       ------------------------- */
-    function todayISO() {
-      return new Date().toISOString().split('T')[0];
-    }
-    function moneyBR(val) {
-      if(!val) return 'R$ 0,00';
-      return Number(val).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-    }
-    function genId() { return Date.now() + Math.floor(Math.random()*999); }
+        // -----------------------------------------------------------
+        // 3. APP LOGIC
+        // -----------------------------------------------------------
+        window.app = {
+            user: null,
 
-    /* -------------------------
-       Dashboard
-       ------------------------- */
-    let chart = null;
-    function updateDashboard() {
-      const today = todayISO();
-      const apptsToday = db.agendamentos.filter(a => a.data === today && a.status !== 'Cancelado');
-      const kAg = apptsToday.length;
-      const kPac = db.pacientes.length;
-      const kFat = db.agendamentos.reduce((s,a)=> s + Number(a.valor || 0),0);
+            // --- AUTHENTICATION ---
+            auth: {
+                login: async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('email').value;
+                    const pass = document.getElementById('password').value;
+                    try {
+                        await signInWithEmailAndPassword(auth, email, pass);
+                    } catch (error) {
+                        document.getElementById('msg-login-error').classList.remove('hidden');
+                        document.getElementById('msg-login-error').innerText = error.message;
+                    }
+                },
+                logout: () => signOut(auth)
+            },
 
-      document.getElementById('k-agendamentos').innerText = kAg;
-      document.getElementById('k-pacientes').innerText = kPac;
-      document.getElementById('k-faturamento').innerText = moneyBR(kFat);
+            // --- DASHBOARD ---
+            dashboard: {
+                load: async () => {
+                    // Simples counters (not real-time listeners to save reads in this MVP)
+                    const today = new Date().toISOString().split('T')[0];
+                    
+                    // Queries
+                    const qAppts = query(collection(db, "appointments"), where("date", "==", today));
+                    const snapAppts = await getDocs(qAppts);
+                    const countAppts = snapAppts.size;
 
-      // taxa de confirmação = confirmados / (pendente+confirmado)
-      const totalRelevant = db.agendamentos.filter(a=>a.status!=='Cancelado').length || 0;
-      const confirmed = db.agendamentos.filter(a=>a.status==='Confirmado').length || 0;
-      document.getElementById('k-confirmacao').innerText = totalRelevant ? Math.round(confirmed / totalRelevant * 100) + '%' : '-';
+                    const snapPats = await getDocs(collection(db, "patients"));
+                    const countPats = snapPats.size;
 
-      // próximos 5
-      const upcoming = db.agendamentos.filter(a=> a.status !== 'Cancelado').sort((a,b) => (a.data + a.hora).localeCompare(b.data + b.hora)).slice(0,5);
-      const el = document.getElementById('lista-proximos'); el.innerHTML = '';
-      upcoming.forEach(app => {
-        const p = db.pacientes.find(x => x.id === app.pacienteId) || { nome: '—', telefone: '' };
-        el.innerHTML += `
-          <div class="p-3 rounded border bg-slate-50 flex justify-between items-center">
-            <div>
-              <div class="font-medium">${p.nome}</div>
-              <div class="text-xs text-slate-500">${app.data.split('-').reverse().join('/')} ${app.hora} • ${app.procedimento}</div>
-            </div>
-            <div class="text-right small">
-              <div class="${statusColor(app.status)} font-bold">${app.status}</div>
-              <div class="mt-2"><button class="text-blue-600 text-sm" onclick="openWhatsAppReminder(${app.id})"><i class="fa-brands fa-whatsapp"></i> Lembrar</button></div>
-            </div>
-          </div>`;
-      });
+                    // Calculating Waiting
+                    let waiting = 0;
+                    let revenue = 0;
+                    const listRecent = document.getElementById('dash-list-recent');
+                    listRecent.innerHTML = '';
 
-      // fake weekly data for chart (MVP visual)
-      const labels = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-      const data = labels.map((l, idx) => Math.floor(Math.random()*8)+2); // sample
-      renderChart(labels, data);
-    }
+                    snapAppts.forEach(doc => {
+                        const data = doc.data();
+                        if(data.status === 'waiting') waiting++;
+                        if(data.status !== 'canceled') revenue += (Number(data.value) || 0);
 
-    function renderChart(labels, data) {
-      const ctx = document.getElementById('chartAtendimentos').getContext('2d');
-      if(chart) chart.destroy();
-      chart = new Chart(ctx, { type:'bar', data:{ labels, datasets:[{ label:'Atendimentos', data, borderRadius:6 }] }, options:{ plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true} } } });
-    }
+                        // Add to recent list (slice would be better on array)
+                        if(listRecent.children.length < 5) {
+                            listRecent.innerHTML += `<li class="flex justify-between items-center p-2 hover:bg-slate-50 rounded">
+                                <span>${data.patientName}</span>
+                                <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">${data.time}</span>
+                            </li>`;
+                        }
+                    });
 
-    /* -------------------------
-       Agenda (CRUD)
-       ------------------------- */
-    function renderAgenda() {
-      const tbody = document.getElementById('agenda-list');
-      const filterDate = document.getElementById('filter-date').value || todayISO();
-      document.getElementById('filter-date').value = filterDate;
-      const list = db.agendamentos.filter(a => a.data === filterDate).sort((a,b)=>a.hora.localeCompare(b.hora));
-      tbody.innerHTML = '';
-      if(list.length === 0) {
-        tbody.innerHTML = `<tr><td class="p-6 text-center text-slate-400" colspan="6">Nenhum agendamento para esta data.</td></tr>`;
-        return;
-      }
-      list.forEach(a => {
-        const p = db.pacientes.find(x => x.id === a.pacienteId) || { nome:'—', telefone:'' };
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-3 font-medium">${a.hora}</td>
-            <td class="p-3">${p.nome}<div class="text-xs text-slate-400">${p.telefone}</div></td>
-            <td class="p-3">${a.procedimento}</td>
-            <td class="p-3">${moneyBR(a.valor)}</td>
-            <td class="p-3"><span class="${statusColor(a.status)} font-bold">${a.status}</span></td>
-            <td class="p-3 text-right small">
-              <button class="mr-2" onclick="openWhatsAppReminder(${a.id})" title="Enviar lembrete WhatsApp"><i class="fa-brands fa-whatsapp text-green-600"></i></button>
-              <button class="mr-2" onclick="toggleStatus(${a.id})" title="Alterar status"><i class="fa-solid fa-rotate"></i></button>
-              <button onclick="editAgendamento(${a.id})" title="Editar"><i class="fa-solid fa-pen-to-square text-sky-600"></i></button>
-            </td>
-          </tr>`;
-      });
-    }
+                    document.getElementById('dash-count-today').innerText = countAppts;
+                    document.getElementById('dash-count-patients').innerText = countPats;
+                    document.getElementById('dash-count-waiting').innerText = waiting;
+                    document.getElementById('dash-revenue').innerText = revenue.toFixed(2);
+                }
+            },
 
-    function statusColor(s) {
-      if(s==='Confirmado') return 'text-green-600';
-      if(s==='Pendente') return 'text-yellow-600';
-      if(s==='Cancelado') return 'text-red-600';
-      return 'text-slate-600';
-    }
+            // --- PATIENTS ---
+            patients: {
+                list: [],
+                load: async () => {
+                    const tbody = document.getElementById('patients-list');
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4"><div class="loader mx-auto"></div></td></tr>';
+                    
+                    const q = query(collection(db, "patients"), orderBy("name"));
+                    const querySnapshot = await getDocs(q);
+                    
+                    tbody.innerHTML = '';
+                    app.patients.list = [];
+                    
+                    querySnapshot.forEach((doc) => {
+                        const p = { id: doc.id, ...doc.data() };
+                        app.patients.list.push(p);
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-slate-50 group">
+                                <td class="p-4 font-medium">${p.name}</td>
+                                <td class="p-4 text-slate-500">${p.phone}<br><span class="text-xs">${p.email}</span></td>
+                                <td class="p-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">${p.insurance || 'Particular'}</span></td>
+                                <td class="p-4 text-right">
+                                    <button onclick="app.prontuario.open('${p.id}')" class="text-blue-600 hover:text-blue-800 font-bold text-sm">
+                                        <i class="fa-solid fa-folder-open"></i> Prontuário
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                },
+                openNewModal: async () => {
+                    const { value: formValues } = await Swal.fire({
+                        title: 'Novo Paciente',
+                        html:
+                            '<input id="swal-name" class="swal2-input" placeholder="Nome Completo">' +
+                            '<input id="swal-cpf" class="swal2-input" placeholder="CPF">' +
+                            '<input id="swal-phone" class="swal2-input" placeholder="Telefone">' +
+                            '<input id="swal-email" class="swal2-input" placeholder="E-mail">' +
+                            '<input id="swal-insurance" class="swal2-input" placeholder="Convênio">',
+                        focusConfirm: false,
+                        showCancelButton: true,
+                        preConfirm: () => {
+                            return [
+                                document.getElementById('swal-name').value,
+                                document.getElementById('swal-cpf').value,
+                                document.getElementById('swal-phone').value,
+                                document.getElementById('swal-email').value,
+                                document.getElementById('swal-insurance').value
+                            ]
+                        }
+                    });
 
-    function toggleStatus(id) {
-      const a = db.agendamentos.find(x => x.id === id); if(!a) return;
-      a.status = a.status === 'Pendente' ? 'Confirmado' : (a.status === 'Confirmado' ? 'Cancelado' : 'Pendente');
-      saveDB();
-      renderAgenda();
-    }
+                    if (formValues) {
+                        try {
+                            await addDoc(collection(db, "patients"), {
+                                name: formValues[0],
+                                cpf: formValues[1],
+                                phone: formValues[2],
+                                email: formValues[3],
+                                insurance: formValues[4],
+                                createdAt: serverTimestamp()
+                            });
+                            Swal.fire('Sucesso', 'Paciente cadastrado!', 'success');
+                            app.patients.load();
+                        } catch(e) {
+                            Swal.fire('Erro', e.message, 'error');
+                        }
+                    }
+                },
+                exportCSV: () => {
+                    let csvContent = "data:text/csv;charset=utf-8,Nome,CPF,Email,Telefone\n";
+                    app.patients.list.forEach(p => {
+                        csvContent += `${p.name},${p.cpf},${p.email},${p.phone}\n`;
+                    });
+                    const encodedUri = encodeURI(csvContent);
+                    window.open(encodedUri);
+                }
+            },
 
-    function saveAgendamento() {
-      const id = document.getElementById('a-id').value;
-      const pacienteId = Number(document.getElementById('a-paciente').value);
-      const data = document.getElementById('a-data').value;
-      const hora = document.getElementById('a-hora').value;
-      const proc = document.getElementById('a-procedimento').value;
-      const valor = Number(document.getElementById('a-valor').value || 0);
-      const notes = document.getElementById('a-notes').value || '';
+            // --- AGENDA ---
+            agenda: {
+                load: async () => {
+                    const dateFilter = document.getElementById('agenda-date-filter').value || new Date().toISOString().split('T')[0];
+                    document.getElementById('agenda-date-filter').value = dateFilter;
 
-      if(!pacienteId || !data || !hora || !proc) { alert('Preencha paciente, data, hora e procedimento.'); return; }
+                    const tbody = document.getElementById('agenda-list');
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4"><div class="loader mx-auto"></div></td></tr>';
 
-      if(id) {
-        const a = db.agendamentos.find(x=>x.id==id);
-        Object.assign(a, { pacienteId, data, hora, procedimento: proc, valor, notes });
-      } else {
-        db.agendamentos.push({ id: genId(), pacienteId, data, hora, procedimento: proc, valor, notes, status: 'Pendente' });
-      }
+                    const q = query(collection(db, "appointments"), where("date", "==", dateFilter)); // Simple filter without orderBy to avoid index requirement err
+                    const querySnapshot = await getDocs(q);
+                    
+                    // Sort client side
+                    const appts = [];
+                    querySnapshot.forEach(doc => appts.push({ id: doc.id, ...doc.data() }));
+                    appts.sort((a,b) => a.time.localeCompare(b.time));
 
-      saveDB();
-      closeModal('modal-agendamento');
-      router('agenda');
-    }
+                    tbody.innerHTML = '';
+                    if(appts.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum agendamento neste dia.</td></tr>';
+                        return;
+                    }
 
-    function editAgendamento(id) {
-      const a = db.agendamentos.find(x => x.id === id); if(!a) return;
-      openModal('modal-agendamento');
-      document.getElementById('a-id').value = a.id;
-      document.getElementById('a-paciente').innerHTML = '';
-      db.pacientes.forEach(p => document.getElementById('a-paciente').innerHTML += `<option value="${p.id}" ${p.id===a.pacienteId?'selected':''}>${p.nome}</option>`);
-      document.getElementById('a-data').value = a.data;
-      document.getElementById('a-hora').value = a.hora;
-      document.getElementById('a-procedimento').value = a.procedimento;
-      document.getElementById('a-valor').value = a.valor;
-      document.getElementById('a-notes').value = a.notes || '';
-    }
+                    appts.forEach(a => {
+                        let statusColor = 'bg-slate-100 text-slate-600';
+                        if(a.status === 'confirmed') statusColor = 'bg-green-100 text-green-700';
+                        if(a.status === 'waiting') statusColor = 'bg-orange-100 text-orange-700';
+                        if(a.status === 'finished') statusColor = 'bg-blue-100 text-blue-700';
 
-    /* -------------------------
-       Pacientes (CRUD)
-       ------------------------- */
-    function renderPacientes() {
-      const tbody = document.getElementById('pacientes-list');
-      const term = document.getElementById('search-paciente').value.toLowerCase();
-      const list = db.pacientes.filter(p => p.nome.toLowerCase().includes(term) || p.telefone.includes(term));
-      tbody.innerHTML = '';
-      if(list.length === 0) {
-        tbody.innerHTML = `<tr><td class="p-6 text-center text-slate-400" colspan="4">Nenhum paciente encontrado.</td></tr>`;
-        return;
-      }
-      list.forEach(p => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-3 font-medium">${p.nome}</td>
-            <td class="p-3">${p.telefone}</td>
-            <td class="p-3 small">${p.lastVisit || '-'}</td>
-            <td class="p-3 text-right small">
-              <button class="mr-2" onclick="openWhatsAppNumber('${p.telefone}')"><i class="fa-brands fa-whatsapp text-green-600"></i></button>
-              <button onclick="editPaciente(${p.id})"><i class="fa-solid fa-pen-to-square text-sky-600"></i></button>
-            </td>
-          </tr>`;
-      });
-    }
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-4 font-bold">${a.time}</td>
+                                <td class="p-4">
+                                    <div class="font-bold">${a.patientName}</div>
+                                    <div class="text-xs text-slate-400">${a.procedure}</div>
+                                </td>
+                                <td class="p-4 text-sm">${a.doctor}</td>
+                                <td class="p-4"><span class="${statusColor} px-2 py-1 rounded text-xs font-bold uppercase">${a.status}</span></td>
+                                <td class="p-4 text-right flex justify-end gap-2">
+                                    <button onclick="app.agenda.sendReminder('${a.patientName}', '${a.date}', '${a.time}')" class="text-green-500 hover:bg-green-50 p-2 rounded" title="WhatsApp">
+                                        <i class="fa-brands fa-whatsapp"></i>
+                                    </button>
+                                    <button onclick="app.agenda.setStatus('${a.id}', 'confirmed')" class="text-blue-500 hover:bg-blue-50 p-2 rounded" title="Confirmar">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                    <button onclick="app.agenda.setStatus('${a.id}', 'canceled')" class="text-red-500 hover:bg-red-50 p-2 rounded" title="Cancelar">
+                                        <i class="fa-solid fa-ban"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                },
+                openNewModal: async () => {
+                    // First get patients for select
+                    const snap = await getDocs(collection(db, "patients"));
+                    let options = '';
+                    snap.forEach(doc => options += `<option value="${doc.id}||${doc.data().name}">${doc.data().name}</option>`);
 
-    function savePaciente() {
-      const id = document.getElementById('p-id').value;
-      const nome = document.getElementById('p-nome').value.trim();
-      const tel = document.getElementById('p-tel').value.trim();
-      const email = document.getElementById('p-email').value.trim();
-      const notes = document.getElementById('p-notes').value.trim();
+                    const { value: formValues } = await Swal.fire({
+                        title: 'Novo Agendamento',
+                        html:
+                            `<select id="swal-patient" class="swal2-input">${options}</select>` +
+                            '<input type="date" id="swal-date" class="swal2-input">' +
+                            '<input type="time" id="swal-time" class="swal2-input">' +
+                            '<input id="swal-proc" class="swal2-input" placeholder="Procedimento">' +
+                            '<input id="swal-doc" class="swal2-input" placeholder="Profissional" value="Dr. Admin">' +
+                            '<input type="number" id="swal-val" class="swal2-input" placeholder="Valor R$">',
+                        focusConfirm: false,
+                        showCancelButton: true,
+                        preConfirm: () => {
+                            return [
+                                document.getElementById('swal-patient').value,
+                                document.getElementById('swal-date').value,
+                                document.getElementById('swal-time').value,
+                                document.getElementById('swal-proc').value,
+                                document.getElementById('swal-doc').value,
+                                document.getElementById('swal-val').value
+                            ]
+                        }
+                    });
 
-      if(!nome || !tel) { alert('Nome e telefone são obrigatórios.'); return; }
+                    if (formValues) {
+                        const [patInfo, date, time, proc, docName, val] = formValues;
+                        const [patId, patName] = patInfo.split('||');
+                        await addDoc(collection(db, "appointments"), {
+                            patientId: patId,
+                            patientName: patName,
+                            date, time, procedure: proc, doctor: docName, value: val,
+                            status: 'scheduled'
+                        });
+                        Swal.fire('Agendado!', '', 'success');
+                        app.agenda.load();
+                    }
+                },
+                setStatus: async (id, status) => {
+                    await updateDoc(doc(db, "appointments", id), { status: status });
+                    app.agenda.load();
+                    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                    Toast.fire({ icon: 'success', title: `Status alterado para ${status}` });
+                },
+                sendReminder: (name, date, time) => {
+                    // Mock URL generator
+                    const msg = `Olá ${name}, lembrete da sua consulta dia ${date} às ${time}. Responda para confirmar.`;
+                    alert(`Simulação: Link do WhatsApp abriria com:\n\n${msg}`);
+                }
+            },
 
-      if(id) {
-        const p = db.pacientes.find(x=>x.id==id);
-        Object.assign(p, { nome, telefone: tel, email, notes });
-      } else {
-        db.pacientes.push({ id: genId(), nome, telefone: tel, email, notes, lastVisit: '-' });
-      }
+            // --- CHECKIN ---
+            checkin: {
+                load: async () => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const q = query(collection(db, "appointments"), where("date", "==", today), where("status", "==", "waiting"));
+                    const snap = await getDocs(q);
+                    const list = document.getElementById('checkin-list');
+                    list.innerHTML = '';
+                    
+                    if(snap.size === 0) {
+                        list.innerHTML = '<li class="p-4 text-slate-400 text-center">Ninguém na sala de espera.</li>';
+                        return;
+                    }
 
-      saveDB();
-      closeModal('modal-paciente');
-      router('pacientes');
-    }
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        list.innerHTML += `
+                            <li class="p-4 flex justify-between items-center">
+                                <div>
+                                    <div class="font-bold text-lg">${d.patientName}</div>
+                                    <div class="text-sm text-slate-500">Chegou para: ${d.procedure} (${d.doctor})</div>
+                                </div>
+                                <button onclick="app.agenda.setStatus('${doc.id}', 'finished'); app.checkin.load()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                    Chamar
+                                </button>
+                            </li>
+                        `;
+                    });
+                },
+                manual: async () => {
+                    // Simulate finding an appointment for today and setting to 'waiting'
+                    const { value: name } = await Swal.fire({
+                        title: 'Check-in Manual',
+                        input: 'text',
+                        inputLabel: 'Nome do Paciente',
+                        inputPlaceholder: 'Digite o nome...'
+                    });
+                    
+                    if(name) {
+                        // In real app, search query. Here, mock action.
+                        Swal.fire('Check-in realizado', `Paciente ${name} adicionado à fila. (Simulação: no app real buscaria o agendamento e alteraria status para 'waiting')`, 'success');
+                    }
+                }
+            },
 
-    function editPaciente(id) {
-      const p = db.pacientes.find(x => x.id === id); if(!p) return;
-      openModal('modal-paciente');
-      document.getElementById('p-id').value = p.id;
-      document.getElementById('p-nome').value = p.nome;
-      document.getElementById('p-tel').value = p.telefone;
-      document.getElementById('p-email').value = p.email || '';
-      document.getElementById('p-notes').value = p.notes || '';
-    }
+            // --- PRONTUÁRIO ---
+            prontuario: {
+                activePatientId: null,
+                open: async (patId) => {
+                    app.prontuario.activePatientId = patId;
+                    
+                    // UI Swap
+                    router.navigate('prontuario');
+                    document.getElementById('prontuario-selector').classList.add('hidden');
+                    document.getElementById('prontuario-detail').classList.remove('hidden');
 
-    /* -------------------------
-       Lembretes (WhatsApp / SMS / Email)
-       ------------------------- */
-    function openWhatsAppReminder(agendamentoId) {
-      const a = db.agendamentos.find(x => x.id === agendamentoId); if(!a) return;
-      const p = db.pacientes.find(x => x.id === a.pacienteId); if(!p) { alert('Paciente não encontrado'); return; }
-      const text = `Olá ${p.nome}, lembramos do seu agendamento em ${a.data.split('-').reverse().join('/')} às ${a.hora} para ${a.procedimento}. Responda SIM para confirmar.`;
-      const phone = p.telefone.replace(/\D/g,'');
-      const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
-    }
+                    // Fetch Info
+                    const pDoc = await getDoc(doc(db, "patients", patId));
+                    if(pDoc.exists()) {
+                        const p = pDoc.data();
+                        document.getElementById('pt-name').innerText = p.name;
+                        document.getElementById('pt-info').innerText = `CPF: ${p.cpf || '-'} • Convênio: ${p.insurance || 'Particular'}`;
+                    }
 
-    function openWhatsAppNumber(number) {
-      const phone = (number || '').replace(/\D/g,'');
-      if(!phone) { alert('Telefone inválido'); return; }
-      window.open(`https://wa.me/${phone}`, '_blank');
-    }
+                    app.prontuario.loadNotes();
+                },
+                close: () => {
+                    app.prontuario.activePatientId = null;
+                    document.getElementById('prontuario-selector').classList.remove('hidden');
+                    document.getElementById('prontuario-detail').classList.add('hidden');
+                },
+                loadNotes: async () => {
+                    const list = document.getElementById('timeline-list');
+                    list.innerHTML = '<div class="loader"></div>';
+                    
+                    // Subcollection or main collection filter
+                    const q = query(collection(db, "medical_records"), where("patientId", "==", app.prontuario.activePatientId), orderBy("createdAt", "desc"));
+                    const snap = await getDocs(q);
 
-    /* -------------------------
-       Import / Export CSV + Backup
-       ------------------------- */
-    function exportCSV() {
-      // export pacientes + agendamentos as two CSVs in a zip-like single file (simple approach: combined CSV with type)
-      let csv = 'type,id,field1,field2,field3,field4,field5,field6\n';
-      db.pacientes.forEach(p => {
-        csv += `patient,${p.id},"${p.nome}","${p.telefone}","${p.email || ''}","${(p.notes||'').replace(/\n/g,' ')}","${p.lastVisit || ''}",\n`;
-      });
-      db.agendamentos.forEach(a => {
-        csv += `appointment,${a.id},${a.pacienteId},${a.data},${a.hora},"${(a.procedimento||'').replace(/"/g,'""')}",${a.valor || 0},${a.status}\n`;
-      });
+                    list.innerHTML = '';
+                    if(snap.size === 0) list.innerHTML = '<p class="text-slate-400 text-sm text-center">Nenhuma anotação ainda.</p>';
 
-      const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'saasclinic-export.csv'; document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-    }
+                    snap.forEach(d => {
+                        const n = d.data();
+                        const dateStr = n.createdAt ? n.createdAt.toDate().toLocaleString() : 'Agora';
+                        list.innerHTML += `
+                            <div class="flex gap-4">
+                                <div class="flex flex-col items-center">
+                                    <div class="w-3 h-3 bg-blue-400 rounded-full"></div>
+                                    <div class="w-0.5 h-full bg-slate-200 my-1"></div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg border border-slate-100 shadow-sm w-full mb-4">
+                                    <div class="text-xs text-slate-400 font-bold mb-1">${dateStr} - Dr. Admin</div>
+                                    <p class="text-slate-700 text-sm whitespace-pre-wrap">${n.note}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                },
+                addNote: async () => {
+                    const txt = document.getElementById('new-note-text').value;
+                    if(!txt) return;
 
-    function importCSV(evt) {
-      const file = evt.target.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target.result;
-        const lines = text.split(/\r?\n/).slice(1); // skip header
-        lines.forEach(line => {
-          if(!line.trim()) return;
-          // naive CSV parse for this MVP (split by comma, respecting quotes would be better)
-          // We expect "type,id,rest..."
-          const parts = line.split(',');
-          const type = parts[0];
-          if(type === 'patient') {
-            const id = Number(parts[1]);
-            const nome = (parts[2] || '').replace(/(^"|"$)/g,'');
-            const telefone = (parts[3] || '').replace(/(^"|"$)/g,'');
-            const email = (parts[4] || '').replace(/(^"|"$)/g,'');
-            if(!db.pacientes.find(p => p.id === id)) db.pacientes.push({ id, nome, telefone, email, notes:'', lastVisit:'-' });
-          }
-          if(type === 'appointment') {
-            const id = Number(parts[1]);
-            const pacienteId = Number(parts[2]);
-            const data = parts[3];
-            const hora = parts[4];
-            const proc = (parts[5] || '').replace(/(^"|"$)/g,'');
-            const valor = Number(parts[6] || 0);
-            const status = parts[7] || 'Pendente';
-            if(!db.agendamentos.find(a => a.id === id)) db.agendamentos.push({ id, pacienteId, data, hora, procedimento: proc, valor, status });
-          }
+                    await addDoc(collection(db, "medical_records"), {
+                        patientId: app.prontuario.activePatientId,
+                        note: txt,
+                        doctorId: auth.currentUser.uid,
+                        createdAt: serverTimestamp()
+                    });
+                    
+                    document.getElementById('new-note-text').value = '';
+                    app.prontuario.loadNotes();
+                },
+                uploadFile: async (input) => {
+                    const file = input.files[0];
+                    if(!file) return;
+                    
+                    // Simple Storage Upload
+                    try {
+                        const storageRef = ref(storage, `patients/${app.prontuario.activePatientId}/${file.name}`);
+                        await uploadBytes(storageRef, file);
+                        const url = await getDownloadURL(storageRef);
+                        
+                        // Save ref in notes or separate collection
+                        await addDoc(collection(db, "medical_records"), {
+                            patientId: app.prontuario.activePatientId,
+                            note: `[ARQUIVO] Upload realizado: ${file.name} - <a href="${url}" target="_blank" class="text-blue-500 underline">Ver Arquivo</a>`,
+                            doctorId: auth.currentUser.uid,
+                            createdAt: serverTimestamp()
+                        });
+                        
+                        Swal.fire('Upload Concluído', 'Arquivo salvo no prontuário.', 'success');
+                        app.prontuario.loadNotes();
+                    } catch (e) {
+                        console.error(e);
+                        Swal.fire('Erro de Upload', 'Verifique as regras de CORS no Firebase console se estiver rodando no navegador localmente.', 'error');
+                    }
+                }
+            }
+        };
+
+        // -----------------------------------------------------------
+        // 4. INITIALIZATION & LISTENERS
+        // -----------------------------------------------------------
+        
+        // Auth Listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                app.user = user;
+                document.getElementById('user-email').innerText = user.email;
+                document.getElementById('view-auth').classList.add('hidden');
+                document.getElementById('view-app').classList.remove('hidden-section');
+                // Start at dashboard
+                router.navigate('dashboard');
+            } else {
+                app.user = null;
+                document.getElementById('view-auth').classList.remove('hidden');
+                document.getElementById('view-app').classList.add('hidden-section');
+            }
         });
-        saveDB();
-        alert('Importação concluída (MVP: parse simples).');
-      };
-      reader.readAsText(file,'UTF-8');
-      evt.target.value = ''; // reset
-    }
 
-    function downloadBackup() {
-      const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'saasclinic-backup.json'; a.click(); a.remove();
-      URL.revokeObjectURL(url);
-    }
+        // Event Binding
+        document.getElementById('login-form').addEventListener('submit', app.auth.login);
+        document.getElementById('btn-logout').addEventListener('click', app.auth.logout);
+        
+        document.getElementById('agenda-date-filter').addEventListener('change', app.agenda.load);
+        document.getElementById('patient-search').addEventListener('keyup', (e) => {
+            // Simple Client Side Filter for MVP
+            const term = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('#patients-list tr');
+            rows.forEach(row => {
+                const txt = row.innerText.toLowerCase();
+                row.style.display = txt.includes(term) ? '' : 'none';
+            });
+        });
 
-    /* -------------------------
-       Modals helpers
-       ------------------------- */
-    function openModal(id) {
-      document.getElementById(id).classList.remove('hidden');
-      if(id === 'modal-paciente') {
-        // clear edit fields for new create
-        document.getElementById('p-id').value = '';
-        document.getElementById('p-nome').value = '';
-        document.getElementById('p-tel').value = '';
-        document.getElementById('p-email').value = '';
-        document.getElementById('p-notes').value = '';
-      }
-      if(id === 'modal-agendamento') {
-        document.getElementById('a-id').value = '';
-        const sel = document.getElementById('a-paciente'); sel.innerHTML = '';
-        db.pacientes.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.nome}</option>`);
-        document.getElementById('a-data').value = todayISO();
-        document.getElementById('a-hora').value = '09:00';
-        document.getElementById('a-procedimento').value = '';
-        document.getElementById('a-valor').value = '';
-        document.getElementById('a-notes').value = '';
-      }
-    }
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        // Mobile Menu
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+            document.querySelector('aside').classList.toggle('hidden');
+            document.querySelector('aside').classList.toggle('absolute');
+            document.querySelector('aside').classList.toggle('h-full');
+            document.querySelector('aside').classList.toggle('z-20');
+        });
+        
+        // Expose app to window for HTML onclick handlers
+        window.router = router;
 
-    /* -------------------------
-       Helpers e Init
-       ------------------------- */
-    function updateAll() {
-      renderPacientes();
-      renderAgenda();
-      updateDashboard();
-    }
-
-    function init() {
-      loadDB();
-      // if no data, create sample patients
-      if(!db.pacientes || db.pacientes.length === 0) { db.pacientes = [{ id: genId(), nome:'Paciente Exemplo', telefone:'5511999998888', email:'', notes:'', lastVisit:'-' }]; saveDB(); }
-      router('dashboard');
-    }
-
-    // attach forms
-    document.getElementById('form-paciente').addEventListener('submit', (e) => { e.preventDefault(); savePaciente(); });
-    document.getElementById('form-agendamento').addEventListener('submit', (e) => { e.preventDefault(); saveAgendamento(); });
-
-    // boot
-    window.addEventListener('load', init);
-  </script>
+    </script>
 </body>
 </html>
