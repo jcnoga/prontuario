@@ -3,759 +3,540 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OdontoCloud Pro - Sistema Clínico Integrado</title>
+    <title>SaaS Clinic Manager - MVP</title>
     
-    <!-- Framework CSS (Tailwind) -->
+    <!-- Tailwind CSS (Estilização Rápida) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Ícones (FontAwesome) -->
+    <!-- FontAwesome (Ícones) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Gráficos (Chart.js) -->
+    <!-- Chart.js (Gráficos) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        
-        /* Estilos do Odontograma */
-        .odontogram-grid { display: grid; grid-template-columns: repeat(16, 1fr); gap: 4px; overflow-x: auto; padding: 10px; }
-        .tooth { 
-            border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; text-align: center; 
-            cursor: pointer; transition: all 0.2s; background: white; min-width: 45px;
-        }
-        .tooth:hover { transform: scale(1.05); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        
-        /* Estados do Dente */
-        .t-healthy { border-bottom: 4px solid #22c55e; } /* Saudável */
-        .t-caries { background-color: #fee2e2; border-color: #ef4444; } /* Cárie */
-        .t-restored { background-color: #dbeafe; border-color: #3b82f6; } /* Restaurado */
-        .t-missing { opacity: 0.4; background-color: #cbd5e1; text-decoration: line-through; } /* Ausente */
-        .t-canal { background-color: #f3e8ff; border-color: #a855f7; } /* Canal */
-
-        /* Utilitários */
-        .hidden-view { display: none !important; }
-        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        
-        /* Spinner de Carregamento */
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        @media print {
-            .no-print { display: none !important; }
-            aside { display: none; }
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="h-screen flex overflow-hidden text-slate-800">
+<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden">
 
-    <!-- MODAL DE CONFIGURAÇÃO (FIREBASE) -->
-    <div id="configModal" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-            <div class="text-center mb-6">
-                <i class="fas fa-cloud-medical text-5xl text-blue-600 mb-2"></i>
-                <h2 class="text-2xl font-bold">Configuração Inicial</h2>
-                <p class="text-sm text-gray-500">Para sincronização em tempo real, insira sua configuração do Firebase.</p>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="text-xs font-bold text-gray-600">API Key</label>
-                    <input type="text" id="fb_apiKey" class="w-full border p-2 rounded bg-slate-50">
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-gray-600">Project ID</label>
-                    <input type="text" id="fb_projectId" class="w-full border p-2 rounded bg-slate-50">
-                </div>
-                <button onclick="sys.saveConfig()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">Conectar ao Sistema</button>
-                <button onclick="sys.startDemoMode()" class="w-full text-gray-500 text-sm hover:underline mt-2">Usar Modo Demo (Offline/Local)</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- BARRA LATERAL -->
-    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col z-10 transition-all duration-300 hidden md:flex" id="sidebar">
-        <div class="p-6 flex items-center gap-3 border-b border-slate-100">
-            <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white">
-                <i class="fas fa-tooth text-lg"></i>
-            </div>
-            <div>
-                <h1 class="font-bold text-slate-800 leading-tight">OdontoCloud</h1>
-                <span class="text-xs text-emerald-500 font-medium"><i class="fas fa-wifi"></i> Online</span>
-            </div>
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl z-10 transition-all duration-300 hidden md:flex">
+        <div class="p-6 border-b border-slate-700 flex items-center gap-3">
+            <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">S</div>
+            <h1 class="text-xl font-bold tracking-tight">SaaS Clinic</h1>
         </div>
 
-        <nav class="flex-1 overflow-y-auto p-4 space-y-1">
-            <button onclick="ui.navigate('dashboard')" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 font-medium transition flex items-center gap-3">
-                <i class="fas fa-chart-pie w-5"></i> Dashboard
+        <nav class="flex-1 py-6 px-3 space-y-2">
+            <button onclick="router('dashboard')" class="nav-item w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 bg-slate-800 text-blue-400">
+                <i class="fa-solid fa-chart-pie w-5"></i> Dashboard
             </button>
-            <button onclick="ui.navigate('agenda')" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 font-medium transition flex items-center gap-3">
-                <i class="fas fa-calendar-check w-5"></i> Agenda Inteligente
+            <button onclick="router('agenda')" class="nav-item w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300">
+                <i class="fa-regular fa-calendar-days w-5"></i> Agenda Inteligente
             </button>
-            <button onclick="ui.navigate('pacientes')" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 font-medium transition flex items-center gap-3">
-                <i class="fas fa-users w-5"></i> Pacientes & Prontuário
+            <button onclick="router('pacientes')" class="nav-item w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300">
+                <i class="fa-solid fa-users w-5"></i> Pacientes
             </button>
-            <button onclick="ui.navigate('financeiro')" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 font-medium transition flex items-center gap-3">
-                <i class="fas fa-wallet w-5"></i> Financeiro
-            </button>
-            <button onclick="ui.navigate('estoque')" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 font-medium transition flex items-center gap-3">
-                <i class="fas fa-boxes w-5"></i> Estoque
+            <button onclick="router('financeiro')" class="nav-item w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 transition flex items-center gap-3 text-slate-300">
+                <i class="fa-solid fa-dollar-sign w-5"></i> Financeiro
             </button>
         </nav>
 
-        <div class="p-4 border-t border-slate-100">
-            <button onclick="ui.clearConfig()" class="text-xs text-red-400 hover:text-red-600 flex items-center gap-2">
-                <i class="fas fa-sign-out-alt"></i> Desconectar / Sair
-            </button>
+        <div class="p-4 border-t border-slate-700">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center font-bold">DR</div>
+                <div>
+                    <p class="text-sm font-medium">Dr. Admin</p>
+                    <p class="text-xs text-slate-400">Clínica Modelo</p>
+                </div>
+            </div>
         </div>
     </aside>
 
-    <!-- ÁREA PRINCIPAL -->
-    <main class="flex-1 flex flex-col bg-slate-50 overflow-hidden relative">
+    <!-- MOBILE HEADER -->
+    <div class="md:hidden fixed w-full bg-slate-900 text-white z-50 p-4 flex justify-between items-center">
+        <span class="font-bold">SaaS Clinic</span>
+        <button onclick="document.querySelector('aside').classList.toggle('hidden'); document.querySelector('aside').classList.toggle('absolute'); document.querySelector('aside').classList.toggle('h-full');"><i class="fa-solid fa-bars"></i></button>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 overflow-y-auto relative pt-16 md:pt-0">
         
-        <!-- Mobile Header -->
-        <header class="bg-white border-b p-4 flex justify-between items-center md:hidden">
-            <span class="font-bold">OdontoCloud</span>
-            <button onclick="document.getElementById('sidebar').classList.toggle('hidden')"><i class="fas fa-bars"></i></button>
-        </header>
+        <!-- DASHBOARD VIEW -->
+        <section id="dashboard" class="view p-8 fade-in">
+            <header class="mb-8 flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Visão Geral</h2>
+                    <p class="text-slate-500">Métricas de hoje e performance da semana.</p>
+                </div>
+                <button onclick="router('agenda')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg transition text-sm font-medium">
+                    <i class="fa-solid fa-plus mr-2"></i> Novo Agendamento
+                </button>
+            </header>
 
-        <!-- CONTEÚDO DINÂMICO -->
-        <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-8 pb-20">
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="text-slate-400 text-xs font-uppercase font-bold tracking-wider mb-1">AGENDAMENTOS HOJE</div>
+                    <div class="text-3xl font-bold text-slate-800" id="kpi-agendamentos">0</div>
+                    <div class="text-xs text-green-500 mt-2 font-medium"><i class="fa-solid fa-arrow-up"></i> Agenda Ativa</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="text-slate-400 text-xs font-uppercase font-bold tracking-wider mb-1">FATURAMENTO PREVISTO</div>
+                    <div class="text-3xl font-bold text-slate-800" id="kpi-faturamento">R$ 0</div>
+                    <div class="text-xs text-slate-400 mt-2">Baseado na agenda</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="text-slate-400 text-xs font-uppercase font-bold tracking-wider mb-1">PACIENTES TOTAIS</div>
+                    <div class="text-3xl font-bold text-slate-800" id="kpi-pacientes">0</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <div class="text-slate-400 text-xs font-uppercase font-bold tracking-wider mb-1">TAXA DE CONFIRMAÇÃO</div>
+                    <div class="text-3xl font-bold text-blue-600">85%</div>
+                    <div class="text-xs text-slate-400 mt-2">Meta: >70%</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-2">
+                    <h3 class="font-bold text-lg mb-4">Fluxo de Atendimentos (Semana)</h3>
+                    <canvas id="chartCanvas" height="100"></canvas>
+                </div>
+                <!-- Next Appointments -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-lg mb-4">Próximos Pacientes</h3>
+                    <div id="dash-next-list" class="space-y-4">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AGENDA VIEW -->
+        <section id="agenda" class="view p-8 hidden fade-in">
+            <header class="mb-6 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-slate-800">Agenda Inteligente</h2>
+                <button onclick="openModal('modal-agendamento')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition">
+                    <i class="fa-solid fa-plus"></i> Agendar
+                </button>
+            </header>
             
-            <!-- VIEW: DASHBOARD -->
-            <section id="view-dashboard" class="space-y-6">
-                <h2 class="text-2xl font-bold text-slate-800">Visão Geral</h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
-                        <div class="text-gray-500 text-sm mb-1">Atendimentos Hoje</div>
-                        <div class="text-3xl font-bold" id="kpi-today">0</div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-emerald-500">
-                        <div class="text-gray-500 text-sm mb-1">Faturamento Mês</div>
-                        <div class="text-3xl font-bold text-emerald-600" id="kpi-revenue">R$ 0,00</div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-amber-500">
-                        <div class="text-gray-500 text-sm mb-1">Pendências</div>
-                        <div class="text-3xl font-bold text-amber-600" id="kpi-pending">0</div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
-                        <div class="text-gray-500 text-sm mb-1">Pacientes Ativos</div>
-                        <div class="text-3xl font-bold" id="kpi-patients">0</div>
-                    </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <!-- Filters -->
+                <div class="p-4 border-b border-slate-100 bg-slate-50 flex gap-4">
+                    <input type="date" id="filter-date" class="border rounded px-3 py-1 text-sm" onchange="renderAgenda()">
+                    <select class="border rounded px-3 py-1 text-sm bg-white">
+                        <option>Todos Profissionais</option>
+                        <option>Dr. Admin</option>
+                    </select>
                 </div>
-                
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="font-bold mb-4">Próximos Agendamentos</h3>
-                        <ul id="dash-list" class="space-y-3 text-sm"></ul>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm">
-                        <h3 class="font-bold mb-4">Desempenho Financeiro</h3>
-                        <canvas id="financeChart"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- VIEW: AGENDA -->
-            <section id="view-agenda" class="hidden-view space-y-6">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-bold">Agenda</h2>
-                    <button onclick="ui.openModal('appointmentModal')" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow-lg shadow-blue-200"><i class="fas fa-plus"></i> Novo</button>
-                </div>
-                <div class="bg-white p-4 rounded-xl shadow-sm">
-                    <input type="date" id="agendaDate" class="border p-2 rounded mb-4 w-full md:w-auto" onchange="app.renderAgenda()">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
-                                <tr><th class="p-3">Horário</th><th class="p-3">Paciente</th><th class="p-3">Procedimento</th><th class="p-3">Status</th><th class="p-3">Ações</th></tr>
-                            </thead>
-                            <tbody id="agendaTable" class="text-sm"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- VIEW: PACIENTES -->
-            <section id="view-pacientes" class="hidden-view space-y-6">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-bold">Pacientes</h2>
-                    <button onclick="app.newPatient()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow-lg shadow-blue-200"><i class="fas fa-user-plus"></i> Cadastrar</button>
-                </div>
-                <div class="bg-white p-4 rounded-xl shadow-sm flex gap-2">
-                    <input type="text" id="searchPatient" placeholder="Buscar por nome ou CPF..." class="flex-1 border p-2 rounded" onkeyup="app.renderPatients()">
-                    <button class="bg-slate-100 px-4 rounded"><i class="fas fa-search"></i></button>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <!-- List -->
+                <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50"><tr><th class="p-4">Nome</th><th class="p-4">Telefone</th><th class="p-4">Convênio</th><th class="p-4 text-right">Prontuário</th></tr></thead>
-                        <tbody id="patientsTable"></tbody>
+                        <thead class="bg-slate-50 text-slate-500">
+                            <tr>
+                                <th class="p-4 font-medium">Horário</th>
+                                <th class="p-4 font-medium">Paciente</th>
+                                <th class="p-4 font-medium">Procedimento</th>
+                                <th class="p-4 font-medium">Status</th>
+                                <th class="p-4 font-medium text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agenda-list" class="divide-y divide-slate-100">
+                            <!-- Injected via JS -->
+                        </tbody>
                     </table>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- VIEW: PRONTUÁRIO DETALHADO -->
-            <section id="view-prontuario" class="hidden-view space-y-6">
-                <div class="flex items-center gap-4 mb-4">
-                    <button onclick="ui.navigate('pacientes')" class="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center hover:bg-slate-50"><i class="fas fa-arrow-left"></i></button>
-                    <div>
-                        <h2 class="text-2xl font-bold" id="p-name">Paciente</h2>
-                        <span class="text-xs text-gray-500" id="p-details">Carregando...</span>
-                    </div>
+        <!-- PACIENTES VIEW -->
+        <section id="pacientes" class="view p-8 hidden fade-in">
+            <header class="mb-6 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-slate-800">Base de Pacientes</h2>
+                <button onclick="openModal('modal-paciente')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow transition">
+                    <i class="fa-solid fa-user-plus"></i> Novo Paciente
+                </button>
+            </header>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100">
+                <div class="p-4 border-b border-slate-100 flex gap-2">
+                    <input type="text" id="search-paciente" placeholder="Buscar por nome ou CPF..." class="w-full md:w-1/3 border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" onkeyup="renderPacientes()">
                 </div>
-
-                <!-- Abas do Prontuário -->
-                <div class="flex border-b bg-white sticky top-0 z-20">
-                    <button onclick="ui.tab('tab-anamnese')" class="tab-btn active p-4 border-b-2 border-blue-600 text-blue-600 font-medium">Anamnese</button>
-                    <button onclick="ui.tab('tab-odontograma')" class="tab-btn p-4 border-b-2 border-transparent text-gray-500 hover:text-blue-600">Odontograma</button>
-                    <button onclick="ui.tab('tab-soap')" class="tab-btn p-4 border-b-2 border-transparent text-gray-500 hover:text-blue-600">Evolução (SOAP)</button>
-                    <button onclick="ui.tab('tab-imgs')" class="tab-btn p-4 border-b-2 border-transparent text-gray-500 hover:text-blue-600">Imagens</button>
-                </div>
-
-                <div class="bg-white p-6 min-h-[500px]">
-                    <!-- ANAMNESE -->
-                    <div id="tab-anamnese" class="tab-content space-y-4">
-                        <h3 class="font-bold">Anamnese Médica</h3>
-                        <textarea id="txt-anamnese" class="w-full h-64 border p-3 rounded bg-slate-50" placeholder="Histórico médico, alergias, medicamentos em uso..."></textarea>
-                        <button onclick="app.saveRecord('anamnese')" class="bg-green-600 text-white px-6 py-2 rounded">Salvar Alterações</button>
-                    </div>
-
-                    <!-- ODONTOGRAMA -->
-                    <div id="tab-odontograma" class="tab-content hidden-view">
-                        <div class="flex flex-col lg:flex-row gap-6">
-                            <div class="flex-1">
-                                <div class="flex justify-between items-center mb-2">
-                                    <h3 class="font-bold">Odontograma Visual</h3>
-                                    <div class="flex gap-2 text-xs">
-                                        <span class="flex items-center gap-1"><div class="w-3 h-3 bg-green-500 rounded"></div> Saudável</span>
-                                        <span class="flex items-center gap-1"><div class="w-3 h-3 bg-red-200 border border-red-500 rounded"></div> Cárie</span>
-                                        <span class="flex items-center gap-1"><div class="w-3 h-3 bg-blue-200 border border-blue-500 rounded"></div> Restaurado</span>
-                                    </div>
-                                </div>
-                                <div id="odontogram-render" class="odontogram-grid bg-slate-100 rounded-xl border"></div>
-                                <p class="text-xs text-gray-500 mt-2 text-center">Clique no dente para alterar o status.</p>
-                            </div>
-                            <div class="w-full lg:w-1/3 border-l pl-6">
-                                <h3 class="font-bold mb-3">Plano de Tratamento</h3>
-                                <div id="plan-list" class="space-y-2 max-h-64 overflow-y-auto mb-4"></div>
-                                <button onclick="app.addToPlan()" class="w-full border border-blue-600 text-blue-600 py-2 rounded hover:bg-blue-50 text-sm font-bold">+ Adicionar Procedimento</button>
-                                <div class="mt-4 p-4 bg-slate-50 rounded">
-                                    <div class="flex justify-between font-bold"><span>Total:</span> <span id="plan-total">R$ 0,00</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SOAP -->
-                    <div id="tab-soap" class="tab-content hidden-view">
-                        <div class="flex gap-4 mb-6">
-                            <div class="flex-1">
-                                <label class="text-xs font-bold text-gray-500">Nova Evolução</label>
-                                <textarea id="soap-note" class="w-full border p-3 rounded h-24" placeholder="Descreva o procedimento realizado hoje..."></textarea>
-                            </div>
-                            <button onclick="app.addEvolution()" class="self-end bg-blue-600 text-white px-4 py-3 rounded h-12">Adicionar</button>
-                        </div>
-                        <div id="timeline-soap" class="space-y-4 border-l-2 border-slate-200 ml-3 pl-6 relative"></div>
-                    </div>
-
-                    <!-- IMAGENS -->
-                    <div id="tab-imgs" class="tab-content hidden-view text-center py-10">
-                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-300 mb-3"></i>
-                        <p class="text-gray-500">O upload de imagens requer armazenamento em nuvem configurado.</p>
-                        <p class="text-xs text-gray-400">Em uma versão completa, aqui estaria a integração com Firebase Storage.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- VIEW: FINANCEIRO -->
-            <section id="view-financeiro" class="hidden-view space-y-6">
-                <h2 class="text-2xl font-bold">Financeiro</h2>
-                <div class="grid grid-cols-2 gap-4">
-                    <button onclick="app.addTransaction('entrada')" class="p-4 bg-green-100 text-green-700 rounded-lg font-bold border border-green-200 text-left hover:bg-green-200">+ Receita</button>
-                    <button onclick="app.addTransaction('saida')" class="p-4 bg-red-100 text-red-700 rounded-lg font-bold border border-red-200 text-left hover:bg-red-200">- Despesa</button>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-50"><tr><th class="p-4">Data</th><th class="p-4">Descrição</th><th class="p-4 text-right">Valor</th></tr></thead>
-                        <tbody id="finTable"></tbody>
-                    </table>
-                </div>
-            </section>
-             <!-- VIEW: ESTOQUE -->
-             <section id="view-estoque" class="hidden-view space-y-6">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-bold">Estoque</h2>
-                    <button onclick="app.addItemEstoque()" class="bg-blue-600 text-white px-4 py-2 rounded">+ Item</button>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm">
+                <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50"><tr><th class="p-4">Item</th><th class="p-4">Qtd</th><th class="p-4">Status</th><th class="p-4">Ações</th></tr></thead>
-                        <tbody id="stockTable"></tbody>
+                        <thead class="bg-slate-50 text-slate-500">
+                            <tr>
+                                <th class="p-4 font-medium">Nome</th>
+                                <th class="p-4 font-medium">Telefone</th>
+                                <th class="p-4 font-medium">Última Visita</th>
+                                <th class="p-4 font-medium text-right">Prontuário</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pacientes-list" class="divide-y divide-slate-100">
+                            <!-- Injected JS -->
+                        </tbody>
                     </table>
                 </div>
-            </section>
+            </div>
+        </section>
 
-        </div>
+        <!-- FINANCEIRO VIEW -->
+        <section id="financeiro" class="view p-8 hidden fade-in">
+            <header class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-800">Financeiro Simplificado</h2>
+                <p class="text-sm text-slate-500">Previsão baseada nos agendamentos ativos.</p>
+            </header>
+            
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                <p class="text-center text-slate-400 py-10">
+                    <i class="fa-solid fa-lock mb-2 text-2xl"></i><br>
+                    Módulo disponível na versão PRO.<br>
+                    Integração com Stripe e Boleto disponível.
+                </p>
+            </div>
+        </section>
+
     </main>
 
-    <!-- MODAL GENÉRICO AGENDAMENTO -->
-    <div id="appointmentModal" class="hidden-view fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white p-6 rounded-xl w-96">
-            <h3 class="font-bold mb-4">Novo Agendamento</h3>
-            <form onsubmit="app.saveAppointment(event)" class="space-y-3">
-                <select id="apt-patient" class="w-full border p-2 rounded" required></select>
-                <input type="date" id="apt-date" class="w-full border p-2 rounded" required>
-                <input type="time" id="apt-time" class="w-full border p-2 rounded" required>
-                <input type="text" id="apt-proc" placeholder="Procedimento" class="w-full border p-2 rounded">
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="ui.closeModal('appointmentModal')" class="px-4 py-2 text-gray-500">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Agendar</button>
+    <!-- MODALS -->
+
+    <!-- Modal Novo Paciente -->
+    <div id="modal-paciente" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 m-4 fade-in">
+            <h3 class="text-xl font-bold mb-4">Cadastrar Paciente</h3>
+            <form onsubmit="event.preventDefault(); savePaciente();">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Nome Completo</label>
+                        <input type="text" id="p-nome" required class="w-full border rounded p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">WhatsApp / Telefone</label>
+                        <input type="text" id="p-tel" placeholder="5511999999999" required class="w-full border rounded p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Email</label>
+                        <input type="email" id="p-email" class="w-full border rounded p-2 text-sm">
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('modal-paciente')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Salvar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- LÓGICA DO SISTEMA -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        let db; // Firestore instance
-        let activePatientId = null;
-
-        // ==========================================
-        // 1. GESTÃO DE DADOS (STATE MANAGEMENT)
-        // ==========================================
-        const state = {
-            patients: [],
-            appointments: [],
-            finance: [],
-            inventory: [],
-            isDemo: false
-        };
-
-        // ==========================================
-        // 2. SISTEMA E INICIALIZAÇÃO
-        // ==========================================
-        window.sys = {
-            init: () => {
-                const config = localStorage.getItem('odonto_firebase_config');
-                if (config) {
-                    sys.connectFirebase(JSON.parse(config));
-                } else {
-                    // Se não tem config, verifica se tem dados demo no local
-                    if(localStorage.getItem('odonto_demo_data')) sys.startDemoMode();
-                }
-            },
-
-            saveConfig: () => {
-                const apiKey = document.getElementById('fb_apiKey').value;
-                const projectId = document.getElementById('fb_projectId').value;
-                if (!apiKey || !projectId) return alert('Preencha os campos!');
-                
-                const config = { apiKey, authDomain: `${projectId}.firebaseapp.com`, projectId };
-                localStorage.setItem('odonto_firebase_config', JSON.stringify(config));
-                sys.connectFirebase(config);
-            },
-
-            connectFirebase: (config) => {
-                try {
-                    const app = initializeApp(config);
-                    db = getFirestore(app);
-                    document.getElementById('configModal').classList.add('hidden-view');
-                    sys.listenData();
-                } catch (e) {
-                    alert('Erro na conexão Firebase: ' + e.message);
-                    localStorage.removeItem('odonto_firebase_config');
-                    document.getElementById('configModal').classList.remove('hidden-view');
-                }
-            },
-
-            startDemoMode: () => {
-                state.isDemo = true;
-                document.getElementById('configModal').classList.add('hidden-view');
-                
-                // Dados Fakes
-                const saved = localStorage.getItem('odonto_demo_data');
-                if(saved) {
-                    Object.assign(state, JSON.parse(saved));
-                } else {
-                    state.patients = [{id: 1, name: "João Silva", phone: "11999999999", cpf: "123", history: [], odontogram: {}, plan: []}];
-                    state.appointments = [{id: 1, patientId: 1, date: new Date().toISOString().split('T')[0], time: "14:00", proc: "Avaliação", status: "Agendado"}];
-                    state.finance = [{id:1, date: new Date().toISOString().split('T')[0], desc: "Consulta João", value: 150, type: 'entrada'}];
-                    sys.saveLocal();
-                }
-                ui.renderAll();
-            },
-
-            listenData: () => {
-                // Listener em Tempo Real do Firestore (Documento Único 'clinic_data')
-                // Para app real, usar coleções separadas. Aqui simplificado para arquivo único.
-                const docRef = doc(db, "clinica", "dados_gerais");
-                onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        Object.assign(state, docSnap.data());
-                        ui.renderAll();
-                    } else {
-                        // Cria estrutura inicial se não existir
-                        setDoc(docRef, state);
-                    }
-                });
-            },
-
-            sync: async () => {
-                if(state.isDemo) {
-                    sys.saveLocal();
-                } else {
-                    // Salva no Firestore
-                    try {
-                        await setDoc(doc(db, "clinica", "dados_gerais"), state);
-                    } catch(e) { console.error("Erro sync", e); }
-                }
-                ui.renderAll();
-            },
-
-            saveLocal: () => {
-                localStorage.setItem('odonto_demo_data', JSON.stringify(state));
-            }
-        };
-
-        // ==========================================
-        // 3. LÓGICA DE NEGÓCIO (APP)
-        // ==========================================
-        window.app = {
-            // --- PACIENTES ---
-            newPatient: () => {
-                const name = prompt("Nome do Paciente:");
-                if(!name) return;
-                const newP = {
-                    id: Date.now(),
-                    name,
-                    phone: prompt("Telefone (WhatsApp):"),
-                    cpf: prompt("CPF:"),
-                    anamnese: "",
-                    odontogram: {}, // { 18: 1, 17: 0 } (1=Cárie, 0=Saudável)
-                    plan: [],
-                    history: [] // SOAP
-                };
-                state.patients.push(newP);
-                sys.sync();
-            },
-
-            renderPatients: () => {
-                const term = document.getElementById('searchPatient').value.toLowerCase();
-                const list = state.patients.filter(p => p.name.toLowerCase().includes(term));
-                const tbody = document.getElementById('patientsTable');
-                tbody.innerHTML = list.map(p => `
-                    <tr class="border-b hover:bg-slate-50">
-                        <td class="p-4 font-bold">${p.name}</td>
-                        <td class="p-4">${p.phone}</td>
-                        <td class="p-4 text-gray-500">Particular</td>
-                        <td class="p-4 text-right">
-                            <button onclick="app.openPatient(${p.id})" class="text-blue-600 hover:underline">Abrir Ficha</button>
-                        </td>
-                    </tr>
-                `).join('');
-            },
-
-            openPatient: (id) => {
-                activePatientId = id;
-                const p = state.patients.find(x => x.id === id);
-                if(!p) return;
-                
-                document.getElementById('p-name').innerText = p.name;
-                document.getElementById('p-details').innerText = `CPF: ${p.cpf} | Tel: ${p.phone}`;
-                document.getElementById('txt-anamnese').value = p.anamnese || "";
-                
-                app.renderOdontogram(p);
-                app.renderPlan(p);
-                app.renderTimeline(p);
-                
-                ui.navigate('prontuario');
-                ui.tab('tab-anamnese'); // Default tab
-            },
-
-            // --- ODONTOGRAMA & PRONTUÁRIO ---
-            renderOdontogram: (patient) => {
-                const grid = document.getElementById('odontogram-render');
-                grid.innerHTML = '';
-                
-                // Numeração ISO 3950 (Simplificada)
-                const teeth = [
-                    18,17,16,15,14,13,12,11, 21,22,23,24,25,26,27,28,
-                    48,47,46,45,44,43,42,41, 31,32,33,34,35,36,37,38
-                ];
-
-                teeth.forEach(num => {
-                    const status = patient.odontogram[num] || 0; // 0:Healthy, 1:Caries, 2:Restored, 3:Missing, 4:Canal
-                    const classes = ['t-healthy', 't-caries', 't-restored', 't-missing', 't-canal'];
-                    
-                    const div = document.createElement('div');
-                    div.className = `tooth ${classes[status]}`;
-                    div.innerHTML = `<span class="text-xs text-gray-400">${num}</span><br><i class="fas fa-tooth"></i>`;
-                    div.onclick = () => {
-                        const next = (status + 1) % 5;
-                        patient.odontogram[num] = next;
-                        sys.sync();
-                        app.renderOdontogram(patient); // Re-render instantâneo
-                    };
-                    grid.appendChild(div);
-                });
-            },
-
-            saveRecord: (type) => {
-                const p = state.patients.find(x => x.id === activePatientId);
-                if(type === 'anamnese') p.anamnese = document.getElementById('txt-anamnese').value;
-                sys.sync();
-                alert('Salvo com sucesso!');
-            },
-
-            addToPlan: () => {
-                const desc = prompt("Procedimento:");
-                const val = parseFloat(prompt("Valor (ex: 100):"));
-                if(desc && val) {
-                    const p = state.patients.find(x => x.id === activePatientId);
-                    p.plan.push({ id: Date.now(), desc, val, done: false });
-                    sys.sync();
-                    app.renderPlan(p);
-                }
-            },
-
-            renderPlan: (p) => {
-                const div = document.getElementById('plan-list');
-                let total = 0;
-                div.innerHTML = p.plan.map(item => {
-                    total += item.val;
-                    return `
-                    <div class="flex justify-between items-center p-2 border-b bg-white text-sm">
-                        <div>
-                            <input type="checkbox" ${item.done ? 'checked' : ''} onchange="app.togglePlan(${item.id})">
-                            <span class="${item.done ? 'line-through text-gray-400' : ''}">${item.desc}</span>
-                        </div>
-                        <span class="font-bold">R$ ${item.val.toFixed(2)}</span>
-                    </div>`;
-                }).join('');
-                document.getElementById('plan-total').innerText = `R$ ${total.toFixed(2)}`;
-            },
-
-            togglePlan: (itemId) => {
-                const p = state.patients.find(x => x.id === activePatientId);
-                const item = p.plan.find(i => i.id === itemId);
-                item.done = !item.done;
-                sys.sync();
-                app.renderPlan(p);
-            },
-
-            // --- SOAP ---
-            addEvolution: () => {
-                const note = document.getElementById('soap-note').value;
-                if(!note) return;
-                const p = state.patients.find(x => x.id === activePatientId);
-                p.history.unshift({ date: new Date().toLocaleString(), note });
-                document.getElementById('soap-note').value = '';
-                sys.sync();
-                app.renderTimeline(p);
-            },
-
-            renderTimeline: (p) => {
-                const tl = document.getElementById('timeline-soap');
-                tl.innerHTML = p.history.map(h => `
-                    <div class="mb-4 relative">
-                        <div class="absolute -left-[30px] mt-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
-                        <p class="text-xs text-gray-400">${h.date}</p>
-                        <div class="bg-slate-50 p-3 rounded border text-sm mt-1">${h.note}</div>
+    <!-- Modal Novo Agendamento -->
+    <div id="modal-agendamento" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 m-4 fade-in">
+            <h3 class="text-xl font-bold mb-4">Novo Agendamento</h3>
+            <form onsubmit="event.preventDefault(); saveAgendamento();">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Paciente</label>
+                        <select id="a-paciente" required class="w-full border rounded p-2 text-sm bg-white">
+                            <!-- Options injected -->
+                        </select>
                     </div>
-                `).join('');
-            },
+                    <div class="flex gap-2">
+                        <div class="w-1/2">
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Data</label>
+                            <input type="date" id="a-data" required class="w-full border rounded p-2 text-sm">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Hora</label>
+                            <input type="time" id="a-hora" required class="w-full border rounded p-2 text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Procedimento</label>
+                        <input type="text" id="a-procedimento" placeholder="Ex: Consulta Inicial" required class="w-full border rounded p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Valor Estimado (R$)</label>
+                        <input type="number" id="a-valor" required class="w-full border rounded p-2 text-sm">
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('modal-agendamento')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Agendar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-            // --- AGENDA ---
-            saveAppointment: (e) => {
-                e.preventDefault();
-                const pId = parseInt(document.getElementById('apt-patient').value);
-                const date = document.getElementById('apt-date').value;
-                const time = document.getElementById('apt-time').value;
-                const proc = document.getElementById('apt-proc').value;
-                
-                state.appointments.push({
-                    id: Date.now(),
-                    patientId: pId,
-                    date, time, proc,
-                    status: 'Agendado'
-                });
-                sys.sync();
-                ui.closeModal('appointmentModal');
-            },
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- STATE MANAGEMENT (LOCAL STORAGE) ---
+        const DB_KEY = 'saas_clinic_data_v1';
+        
+        let db = {
+            pacientes: [
+                { id: 1, nome: "Maria Silva", telefone: "5511999998888", email: "maria@email.com", lastVisit: "2023-10-01" },
+                { id: 2, nome: "João Souza", telefone: "5511977776666", email: "joao@email.com", lastVisit: "-" }
+            ],
+            agendamentos: [
+                { id: 1, pacienteId: 1, data: new Date().toISOString().split('T')[0], hora: "09:00", procedimento: "Limpeza", valor: 150, status: "Confirmado" },
+                { id: 2, pacienteId: 2, data: new Date().toISOString().split('T')[0], hora: "10:30", procedimento: "Avaliação", valor: 0, status: "Pendente" }
+            ]
+        };
 
-            renderAgenda: () => {
-                const date = document.getElementById('agendaDate').value || new Date().toISOString().split('T')[0];
-                document.getElementById('agendaDate').value = date; // Ensure input has value
+        function loadDB() {
+            const saved = localStorage.getItem(DB_KEY);
+            if (saved) db = JSON.parse(saved);
+            else saveDB(); // Initialize
+        }
 
-                const list = state.appointments.filter(a => a.date === date).sort((a,b) => a.time.localeCompare(b.time));
-                const tbody = document.getElementById('agendaTable');
-                
-                tbody.innerHTML = list.map(apt => {
-                    const p = state.patients.find(x => x.id === apt.patientId);
-                    return `
-                    <tr class="border-b">
-                        <td class="p-3 font-bold text-blue-600">${apt.time}</td>
-                        <td class="p-3">${p ? p.name : 'Desconhecido'}</td>
-                        <td class="p-3 text-xs bg-gray-50 rounded">${apt.proc}</td>
-                        <td class="p-3"><span class="bg-yellow-100 text-yellow-700 px-2 rounded text-xs">${apt.status}</span></td>
-                        <td class="p-3 flex gap-2">
-                            <button onclick="app.whatsapp('${p?.phone}', '${apt.date}', '${apt.time}')" class="text-green-500" title="Confirmar no WhatsApp"><i class="fab fa-whatsapp"></i></button>
-                            <button onclick="app.cancelApt(${apt.id})" class="text-red-400"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`;
-                }).join('') || '<tr><td colspan="5" class="p-4 text-center text-gray-400">Nenhum agendamento.</td></tr>';
-            },
+        function saveDB() {
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+            updateDashboard();
+        }
+
+        // --- ROUTING ---
+        function router(viewId) {
+            // Hide all
+            document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-slate-800', 'text-blue-400');
+                el.classList.add('text-slate-300');
+            });
+
+            // Show Selected
+            document.getElementById(viewId).classList.remove('hidden');
             
-            whatsapp: (phone, date, time) => {
-                if(!phone) return alert('Sem telefone cadastrado');
-                const msg = `Olá! Confirmando sua consulta dia ${date} às ${time}.`;
-                window.open(`https://wa.me/55${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
-            },
+            // Update Nav State (simple logic finding button by text for this MVP)
+            // In a real app, use IDs on buttons
             
-            cancelApt: (id) => {
-                if(confirm('Excluir agendamento?')) {
-                    state.appointments = state.appointments.filter(x => x.id !== id);
-                    sys.sync();
+            if(viewId === 'dashboard') updateDashboard();
+            if(viewId === 'agenda') renderAgenda();
+            if(viewId === 'pacientes') renderPacientes();
+        }
+
+        // --- FEATURES: DASHBOARD ---
+        let myChart = null;
+
+        function updateDashboard() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // KPI Calcs
+            const todayAppts = db.agendamentos.filter(a => a.data === today);
+            const totalRevenue = db.agendamentos.reduce((acc, cur) => acc + Number(cur.valor), 0);
+            
+            document.getElementById('kpi-agendamentos').innerText = todayAppts.length;
+            document.getElementById('kpi-faturamento').innerText = `R$ ${totalRevenue.toLocaleString('pt-BR')}`;
+            document.getElementById('kpi-pacientes').innerText = db.pacientes.length;
+
+            // List Next Appointments
+            const nextList = document.getElementById('dash-next-list');
+            nextList.innerHTML = '';
+            const upcoming = db.agendamentos
+                .filter(a => a.status !== 'Cancelado')
+                .sort((a,b) => (a.data + a.hora).localeCompare(b.data + b.hora))
+                .slice(0, 3);
+
+            upcoming.forEach(app => {
+                const p = db.pacientes.find(x => x.id == app.pacienteId);
+                nextList.innerHTML += `
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-blue-100 text-blue-600 font-bold px-2 py-1 rounded text-xs">${app.hora}</div>
+                            <div>
+                                <div class="font-medium text-sm">${p ? p.nome : 'Desconhecido'}</div>
+                                <div class="text-xs text-slate-500">${app.procedimento}</div>
+                            </div>
+                        </div>
+                        <div class="text-xs font-bold ${getStatusColor(app.status)}">${app.status}</div>
+                    </div>
+                `;
+            });
+
+            renderChart();
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            if(myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'],
+                    datasets: [{
+                        label: 'Atendimentos',
+                        data: [5, 8, 12, 7, 10], // Mock data for visual
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, grid: { display: false } } }
                 }
-            },
+            });
+        }
 
-            // --- FINANCEIRO ---
-            addTransaction: (type) => {
-                const val = parseFloat(prompt("Valor (R$):"));
-                const desc = prompt("Descrição:");
-                if(val && desc) {
-                    state.finance.push({
-                        id: Date.now(),
-                        date: new Date().toISOString().split('T')[0],
-                        desc,
-                        value: val,
-                        type
-                    });
-                    sys.sync();
-                }
-            },
-            
-            renderFinance: () => {
-                const tbody = document.getElementById('finTable');
-                tbody.innerHTML = state.finance.slice().reverse().map(f => `
-                    <tr class="border-b">
-                        <td class="p-4 text-sm text-gray-500">${f.date}</td>
-                        <td class="p-4">${f.desc}</td>
-                        <td class="p-4 text-right font-bold ${f.type === 'entrada' ? 'text-green-600' : 'text-red-600'}">
-                            ${f.type === 'entrada' ? '+' : '-'} R$ ${f.value.toFixed(2)}
-                        </td>
-                    </tr>
-                `).join('');
-                
-                // Atualiza Gráfico simples se a biblioteca carregou
-                app.updateChart();
-            },
-            
-            updateChart: () => {
-                const ctx = document.getElementById('financeChart');
-                if(!ctx) return;
-                
-                const income = state.finance.filter(f => f.type === 'entrada').reduce((a,b) => a + b.value, 0);
-                const expense = state.finance.filter(f => f.type === 'saida').reduce((a,b) => a + b.value, 0);
-                
-                if(window.myChart) window.myChart.destroy();
-                window.myChart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Receita', 'Despesas'],
-                        datasets: [{ data: [income, expense], backgroundColor: ['#10b981', '#ef4444'] }]
-                    }
-                });
-            },
+        // --- FEATURES: AGENDA ---
+        function renderAgenda() {
+            const list = document.getElementById('agenda-list');
+            const filterDate = document.getElementById('filter-date').value || new Date().toISOString().split('T')[0];
+            document.getElementById('filter-date').value = filterDate; // Ensure input matches
 
-            // --- ESTOQUE ---
-            addItemEstoque: () => {
-                const item = prompt("Nome do Item:");
-                if(item) {
-                    state.inventory.push({id: Date.now(), name: item, qtd: 0});
-                    sys.sync();
-                }
-            },
-            
-            renderStock: () => {
-                document.getElementById('stockTable').innerHTML = state.inventory.map(i => `
-                    <tr class="border-b">
-                        <td class="p-4">${i.name}</td>
-                        <td class="p-4 font-bold">${i.qtd}</td>
-                        <td class="p-4"><span class="${i.qtd < 5 ? 'text-red-500 font-bold' : 'text-green-500'}">${i.qtd < 5 ? 'Baixo' : 'OK'}</span></td>
+            list.innerHTML = '';
+
+            const filtered = db.agendamentos.filter(a => a.data === filterDate).sort((a,b) => a.hora.localeCompare(b.hora));
+
+            if(filtered.length === 0) {
+                list.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhum agendamento para esta data.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(app => {
+                const p = db.pacientes.find(x => x.id == app.pacienteId);
+                list.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition group">
+                        <td class="p-4 font-medium">${app.hora}</td>
                         <td class="p-4">
-                            <button onclick="app.changeStock(${i.id}, 1)" class="px-2 bg-green-100">+</button>
-                            <button onclick="app.changeStock(${i.id}, -1)" class="px-2 bg-red-100">-</button>
+                            <div class="font-bold text-slate-700">${p ? p.nome : '?'}</div>
+                            <div class="text-xs text-slate-400">${p ? p.telefone : ''}</div>
+                        </td>
+                        <td class="p-4"><span class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs">${app.procedimento}</span></td>
+                        <td class="p-4"><span class="text-xs font-bold ${getStatusColor(app.status)}">${app.status}</span></td>
+                        <td class="p-4 text-right">
+                            <button onclick="sendWhatsApp(${app.id})" class="text-green-500 hover:text-green-700 mr-2" title="Lembrete WhatsApp">
+                                <i class="fa-brands fa-whatsapp text-lg"></i>
+                            </button>
+                            <button onclick="toggleStatus(${app.id})" class="text-slate-400 hover:text-blue-600" title="Alterar Status">
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
                         </td>
                     </tr>
-                `).join('');
-            },
+                `;
+            });
+        }
+
+        function getStatusColor(status) {
+            if(status === 'Confirmado') return 'text-green-600';
+            if(status === 'Pendente') return 'text-yellow-600';
+            if(status === 'Cancelado') return 'text-red-600';
+            return 'text-slate-600';
+        }
+
+        function toggleStatus(id) {
+            const app = db.agendamentos.find(a => a.id === id);
+            if(app.status === 'Pendente') app.status = 'Confirmado';
+            else if(app.status === 'Confirmado') app.status = 'Cancelado';
+            else app.status = 'Pendente';
+            saveDB();
+            renderAgenda();
+        }
+
+        function sendWhatsApp(id) {
+            const app = db.agendamentos.find(a => a.id === id);
+            const p = db.pacientes.find(x => x.id == app.pacienteId);
+            if(!p) return;
             
-            changeStock: (id, delta) => {
-                const i = state.inventory.find(x => x.id === id);
-                i.qtd += delta;
-                if(i.qtd < 0) i.qtd = 0;
-                sys.sync();
-            }
-        };
+            const msg = `Olá ${p.nome}, confirmamos seu agendamento para ${app.data.split('-').reverse().join('/')} às ${app.hora}. Responda SIM para confirmar.`;
+            const url = `https://wa.me/${p.telefone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
+        }
 
-        // ==========================================
-        // 4. INTERFACE DO USUÁRIO (UI)
-        // ==========================================
-        window.ui = {
-            navigate: (viewId) => {
-                document.querySelectorAll('section').forEach(el => el.classList.add('hidden-view'));
-                document.getElementById(`view-${viewId}`).classList.remove('hidden-view');
-                
-                // Fecha sidebar mobile se aberto
-                if(window.innerWidth < 768) document.getElementById('sidebar').classList.add('hidden');
-            },
+        function saveAgendamento() {
+            const pId = document.getElementById('a-paciente').value;
+            const data = document.getElementById('a-data').value;
+            const hora = document.getElementById('a-hora').value;
+            const proc = document.getElementById('a-procedimento').value;
+            const valor = document.getElementById('a-valor').value;
 
-            renderAll: () => {
-                // Dashboard KPIs
-                document.getElementById('kpi-today').innerText = state.appointments.filter(a => a.date === new Date().toISOString().split('T')[0]).length;
-                document.getElementById('kpi-patients').innerText = state.patients.length;
-                
-                const revenue = state.finance.filter(f => f.type === 'entrada').reduce((a,b) => a+b.value, 0);
-                document.getElementById('kpi-revenue').innerText = `R$ ${revenue.toFixed(2)}`;
-                
-                // Lists
-                app.renderAgenda();
-                app.renderPatients();
-                app.renderFinance();
-                app.renderStock();
-                
-                // Populate Selects
-                const pSelect = document.getElementById('apt-patient');
-                pSelect.innerHTML = state.patients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-            },
-
-            openModal: (id) => document.getElementById(id).classList.remove('hidden-view'),
-            closeModal: (id) => document.getElementById(id).classList.add('hidden-view'),
-            clearConfig: () => {
-                localStorage.removeItem('odonto_firebase_config');
-                location.reload();
-            },
+            db.agendamentos.push({
+                id: Date.now(),
+                pacienteId: pId,
+                data: data,
+                hora: hora,
+                procedimento: proc,
+                valor: valor,
+                status: 'Pendente'
+            });
             
-            tab: (tabId) => {
-                document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-view'));
-                document.getElementById(tabId).classList.remove('hidden-view');
-                
-                document.querySelectorAll('.tab-btn').forEach(el => {
-                    el.classList.remove('border-blue-600', 'text-blue-600');
-                    el.classList.add('border-transparent', 'text-gray-500');
+            saveDB();
+            closeModal('modal-agendamento');
+            router('agenda');
+        }
+
+        // --- FEATURES: PACIENTES ---
+        function renderPacientes() {
+            const list = document.getElementById('pacientes-list');
+            const term = document.getElementById('search-paciente').value.toLowerCase();
+            list.innerHTML = '';
+
+            const filtered = db.pacientes.filter(p => p.nome.toLowerCase().includes(term) || p.telefone.includes(term));
+
+            filtered.forEach(p => {
+                list.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 font-medium text-slate-800">${p.nome}</td>
+                        <td class="p-4 text-slate-500">${p.telefone}</td>
+                        <td class="p-4 text-slate-500 text-xs">${p.lastVisit}</td>
+                        <td class="p-4 text-right">
+                            <button class="text-blue-600 hover:underline text-xs font-bold">Ver Detalhes</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function savePaciente() {
+            const nome = document.getElementById('p-nome').value;
+            const tel = document.getElementById('p-tel').value;
+            const email = document.getElementById('p-email').value;
+
+            db.pacientes.push({
+                id: Date.now(),
+                nome: nome,
+                telefone: tel,
+                email: email,
+                lastVisit: '-'
+            });
+
+            saveDB();
+            closeModal('modal-paciente');
+            renderPacientes();
+        }
+
+        // --- UTILS ---
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            // Populate Select if Agenda
+            if(id === 'modal-agendamento') {
+                const sel = document.getElementById('a-paciente');
+                sel.innerHTML = '';
+                db.pacientes.forEach(p => {
+                    sel.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
                 });
-                event.target.classList.remove('border-transparent', 'text-gray-500');
-                event.target.classList.add('border-blue-600', 'text-blue-600');
+                // Pre-fill date
+                document.getElementById('a-data').value = new Date().toISOString().split('T')[0];
             }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // INIT
+        window.onload = () => {
+            loadDB();
+            router('dashboard');
         };
-
-        // Inicia
-        sys.init();
-
     </script>
 </body>
 </html>
